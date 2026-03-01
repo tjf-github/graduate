@@ -125,7 +125,7 @@ size_t SessionManager::session_count()
     return sessions.size();
 }
 
-size_t SessionManager::get_timeout_minutes() const
+int SessionManager::get_timeout_minutes() const
 {
     return timeout_minutes;
 }

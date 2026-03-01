@@ -48,6 +48,8 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_register(request);
     if (request.path == "/api/login" && request.method == "POST")
         return handle_login(request);
+    if (request.path == "/api/logout" && request.method == "POST")
+        return handle_logout(request);
     if (request.path == "/api/user/info" && request.method == "GET")
         return handle_user_info(request);
 
@@ -58,9 +60,9 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_file_upload(request);
     if (request.path.find("/api/file/download") == 0 && request.method == "GET")
         return handle_file_download(request);
-    if (request.path == "/api/file/delete" && request.method == "POST")
+    if (request.path == "/api/file/delete" && (request.method == "POST" || request.method == "DELETE"))
         return handle_file_delete(request);
-    if (request.path == "/api/file/rename" && request.method == "POST")
+    if (request.path == "/api/file/rename" && (request.method == "POST" || request.method == "PUT"))
         return handle_file_rename(request);
     if (request.path == "/api/file/search" && request.method == "GET")
         return handle_file_search(request);
