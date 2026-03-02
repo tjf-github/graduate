@@ -225,7 +225,7 @@ HttpResponse HttpHandler::handle_user_info(const HttpRequest &request)
     JsonBuilder builder;
     builder.add("user_id", user_id);
     builder.add("active_sessions", static_cast<int>(session_manager->session_count()));
-    builder.add("timeout_minutes", session_manager->get_timeout_minutes());
+    builder.add("timeout_minutes", static_cast<int>(session_manager->get_timeout_minutes()));
 
     return json_response(200, "User info", builder.build());
 }

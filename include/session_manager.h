@@ -39,7 +39,7 @@ public:
     size_t session_count();
 
     // 获取会话超时时间
-    int get_timeout_minutes() const;
+    size_t get_timeout_minutes() const;
 
 private:
     // 存储会话的映射，key为token，value为Session对象

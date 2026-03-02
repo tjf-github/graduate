@@ -180,7 +180,7 @@ void CloudDiskServer::handle_client(int client_fd)
 
     // 关闭连接
     close(client_fd);
-    cout << "Client disconnected" << std::endl;
+    std::cout << "Client disconnected" << std::endl;
 }
 
 // 服务器主循环
