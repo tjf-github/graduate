@@ -48,6 +48,8 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_register(request);
     if (request.path == "/api/login" && request.method == "POST")
         return handle_login(request);
+    if (request.path == "/api/logout" && request.method == "POST")
+        return handle_logout(request);
     if (request.path == "/api/user/info" && request.method == "GET")
         return handle_user_info(request);
 
@@ -58,9 +60,9 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_file_upload(request);
     if (request.path.find("/api/file/download") == 0 && request.method == "GET")
         return handle_file_download(request);
-    if (request.path == "/api/file/delete" && request.method == "POST")
+    if (request.path == "/api/file/delete" && (request.method == "POST" || request.method == "DELETE"))
         return handle_file_delete(request);
-    if (request.path == "/api/file/rename" && request.method == "POST")
+    if (request.path == "/api/file/rename" && (request.method == "POST" || request.method == "PUT"))
         return handle_file_rename(request);
     if (request.path == "/api/file/search" && request.method == "GET")
         return handle_file_search(request);
@@ -217,13 +219,19 @@ HttpResponse HttpHandler::handle_user_info(const HttpRequest &request)
         return error_response(401, "Unauthorized");
     }
 
-    // TODO: Ideally we should get user info from DB, but for now just mock or minimal
-    /*
-    auto user = user_manager->get_user(user_id);
-    if(user) { ... }
-    */
+    auto user = user_manager->get_user_by_id(user_id);
+    if (!user)
+    {
+        return error_response(404, "User not found");
+    }
+
     JsonBuilder builder;
-    builder.add("user_id", user_id);
+    builder.add("id", user->id);
+    builder.add("username", user->username);
+    builder.add("email", user->email);
+    builder.add("storage_used", user->storage_used);
+    builder.add("storage_limit", user->storage_limit);
+    builder.add("created_at", user->created_at);
     builder.add("active_sessions", static_cast<int>(session_manager->session_count()));
     builder.add("timeout_minutes", static_cast<int>(session_manager->get_timeout_minutes()));
 
