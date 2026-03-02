@@ -97,6 +97,46 @@
             margin-left: 20px;
         }
 
+        .profile-card {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 18px;
+        }
+
+        .profile-item {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .profile-item b {
+            color: #212529;
+        }
+
+        .storage-wrap {
+            grid-column: 1 / -1;
+        }
+
+        .storage-bar {
+            width: 100%;
+            height: 10px;
+            background: #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .storage-fill {
+            height: 100%;
+            background: #28a745;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
         /* 表格样式 */
         table {
             width: 100%;
@@ -185,6 +225,20 @@
         </div>
 
         <h2>我的云端文件</h2>
+        <div class="profile-card">
+            <div class="profile-item">用户ID：<b id="profile-id">-</b></div>
+            <div class="profile-item">用户名：<b id="profile-username">-</b></div>
+            <div class="profile-item">邮箱：<b id="profile-email">-</b></div>
+            <div class="profile-item">注册时间：<b id="profile-created">-</b></div>
+            <div class="profile-item">会话数：<b id="profile-sessions">-</b></div>
+            <div class="profile-item">超时策略：<b id="profile-timeout">-</b></div>
+            <div class="storage-wrap profile-item">存储使用：<b id="profile-storage">-</b>
+                <div class="storage-bar">
+                    <div class="storage-fill" id="profile-storage-fill"></div>
+                </div>
+            </div>
+        </div>
+
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <input type="file" id="file-selector" style="flex: 1;">
             <button onclick="handleUpload()" style="width: auto; padding: 0 20px;">上传文件</button>
@@ -218,6 +272,7 @@
             if (currentToken && currentUser) {
                 document.getElementById('display-user').textContent = currentUser;
                 showDiskSection();
+                loadUserProfile();
                 loadFileList();
             } else {
                 localStorage.removeItem('cloudisk_token');
@@ -286,11 +341,54 @@
                     localStorage.setItem('cloudisk_user', username);
                     document.getElementById('display-user').textContent = username;
                     showDiskSection();
+                    loadUserProfile();
                     loadFileList();
                 } else {
                     showMsg(data.message || '登录失败', true);
                 }
             } catch (e) { showMsg('连接服务器失败', true); }
+        }
+
+        function formatBytes(bytes) {
+            if (!Number.isFinite(bytes) || bytes < 0) return '-';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let value = bytes;
+            let idx = 0;
+            while (value >= 1024 && idx < units.length - 1) {
+                value /= 1024;
+                idx++;
+            }
+            return `${value.toFixed(2)} ${units[idx]}`;
+        }
+
+        async function loadUserProfile() {
+            try {
+                const res = await fetch(`${API_BASE}/user/info`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                const data = await res.json();
+                if (data.code !== 200 || !data.data) return;
+
+                const p = data.data;
+                document.getElementById('profile-id').textContent = p.id ?? '-';
+                document.getElementById('profile-username').textContent = p.username || currentUser || '-';
+                document.getElementById('profile-email').textContent = p.email || '-';
+                document.getElementById('profile-created').textContent = p.created_at || '-';
+                document.getElementById('profile-sessions').textContent = p.active_sessions ?? '-';
+                document.getElementById('profile-timeout').textContent = p.timeout_minutes ? `${p.timeout_minutes} 分钟` : '-';
+
+                const used = Number(p.storage_used || 0);
+                const limit = Number(p.storage_limit || 0);
+                document.getElementById('profile-storage').textContent = `${formatBytes(used)} / ${formatBytes(limit)}`;
+
+                let percent = 0;
+                if (limit > 0) percent = Math.min(100, Math.round((used / limit) * 100));
+                const fill = document.getElementById('profile-storage-fill');
+                fill.style.width = `${percent}%`;
+                fill.style.background = percent > 90 ? '#dc3545' : percent > 75 ? '#ffc107' : '#28a745';
+            } catch (e) {
+                console.error('用户资料加载失败', e);
+            }
         }
 
         // 3. 获取文件列表
@@ -344,6 +442,7 @@
                 const data = await res.json();
                 if (data.code === 200) {
                     showMsg('文件上传成功');
+                    loadUserProfile();
                     loadFileList();
                 } else { showMsg('上传失败', true); }
             } catch (e) { showMsg('上传过程中出错', true); }
@@ -378,6 +477,7 @@
                 const data = await res.json();
                 if (data.code === 200) {
                     showMsg('文件已删除');
+                    loadUserProfile();
                     loadFileList();
                 }
             } catch (e) { alert('操作失败'); }

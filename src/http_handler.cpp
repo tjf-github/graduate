@@ -219,13 +219,19 @@ HttpResponse HttpHandler::handle_user_info(const HttpRequest &request)
         return error_response(401, "Unauthorized");
     }
 
-    // TODO: Ideally we should get user info from DB, but for now just mock or minimal
-    /*
-    auto user = user_manager->get_user(user_id);
-    if(user) { ... }
-    */
+    auto user = user_manager->get_user_by_id(user_id);
+    if (!user)
+    {
+        return error_response(404, "User not found");
+    }
+
     JsonBuilder builder;
-    builder.add("user_id", user_id);
+    builder.add("id", user->id);
+    builder.add("username", user->username);
+    builder.add("email", user->email);
+    builder.add("storage_used", user->storage_used);
+    builder.add("storage_limit", user->storage_limit);
+    builder.add("created_at", user->created_at);
     builder.add("active_sessions", static_cast<int>(session_manager->session_count()));
     builder.add("timeout_minutes", session_manager->get_timeout_minutes());
 
