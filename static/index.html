@@ -180,10 +180,13 @@
         <div class="nav">
             <span>欢迎回来, <b id="display-user"></b></span>
             <div class="nav-links">
+                <a onclick="showTab('files')">我的文件</a>
+                <a onclick="showTab('commits')">提交历史</a>
                 <a onclick="handleLogout()">安全退出</a>
             </div>
         </div>
 
+        <div id="tab-files">
         <h2>我的云端文件</h2>
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
             <input type="file" id="file-selector" style="flex: 1;">
@@ -206,6 +209,27 @@
                 </tr>
             </tbody>
         </table>
+        </div>
+
+        <div id="tab-commits" class="hidden">
+        <h2>我的提交历史</h2>
+        <button onclick="loadCommits()" style="width: auto; padding: 8px 20px; background-color: #28a745; margin-bottom: 20px;">刷新</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>操作类型</th>
+                    <th>文件名</th>
+                    <th>提交时间</th>
+                </tr>
+            </thead>
+            <tbody id="commit-table-body">
+                <tr>
+                    <td colspan="3" style="text-align:center;">正在加载提交历史...</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+
     </div>
 
     <script>
@@ -234,6 +258,12 @@
         function showDiskSection() {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('disk-section').classList.remove('hidden');
+        }
+
+        function showTab(tab) {
+            document.getElementById('tab-files').classList.toggle('hidden', tab !== 'files');
+            document.getElementById('tab-commits').classList.toggle('hidden', tab !== 'commits');
+            if (tab === 'commits') loadCommits();
         }
 
         function showMsg(text, isError = false) {
@@ -387,6 +417,35 @@
             localStorage.removeItem('cloudisk_token');
             localStorage.removeItem('cloudisk_user');
             location.reload();
+        }
+
+        // 7. 查看提交历史
+        async function loadCommits() {
+            try {
+                const res = await fetch(`${API_BASE}/file/commits`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                const data = await res.json();
+                const tbody = document.getElementById('commit-table-body');
+                tbody.innerHTML = '';
+                if (data.code === 200 && data.data) {
+                    const commits = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+                    if (commits.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">暂无提交记录</td></tr>';
+                        return;
+                    }
+                    const opLabels = { upload: '📤 上传', rename: '✏️ 重命名', delete: '🗑️ 删除' };
+                    commits.forEach(c => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${opLabels[c.operation] || c.operation}</td>
+                            <td>${c.filename}</td>
+                            <td>${c.commit_time}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) { console.error('提交历史加载失败', e); }
         }
     </script>
 </body>

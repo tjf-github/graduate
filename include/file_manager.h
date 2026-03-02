@@ -20,6 +20,16 @@ struct FileInfo
     std::string upload_date;
 };
 
+struct CommitInfo
+{
+    int id;
+    int user_id;
+    int file_id;
+    std::string operation;
+    std::string filename;
+    std::string commit_time;
+};
+
 // 文件管理类，需要对mysql和路径（有了路径就知道文件）进行封装，提供文件上传、下载、删除、重命名、搜索等功能
 class FileManager
 {
@@ -58,6 +68,9 @@ public:
     std::vector<FileInfo> search_files(int user_id,
                                        const std::string &keyword);
 
+    // 获取文件提交历史
+    std::vector<CommitInfo> get_file_commits(int user_id, int limit = 50);
+
     // 获取存储统计
     long long get_user_storage_used(int user_id);
     int get_user_file_count(int user_id);
@@ -76,6 +89,9 @@ private:
 
     // 创建用户目录
     bool create_user_directory(int user_id);
+
+    // 记录文件操作到提交历史
+    void add_commit(int user_id, int file_id, const std::string &operation, const std::string &filename);
 };
 
 #endif // FILE_MANAGER_H

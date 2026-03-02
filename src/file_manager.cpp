@@ -146,6 +146,9 @@ std::optional<FileInfo> FileManager::upload_file(int user_id,
     int file_id = db->last_insert_id();
     db_pool->return_connection(db);
 
+    // 记录提交历史
+    add_commit(user_id, file_id, "upload", original_filename);
+
     // 构建返回信息
     FileInfo info;
     info.id = file_id;
@@ -284,6 +287,9 @@ bool FileManager::delete_file(int file_id, int user_id)
         return false;
     }
 
+    // 记录提交历史（在删除前记录）
+    add_commit(user_id, file_id, "delete", file_info->original_filename);
+
     // 删除物理文件
     unlink(file_info->file_path.c_str());
 
@@ -305,6 +311,13 @@ bool FileManager::delete_file(int file_id, int user_id)
 bool FileManager::rename_file(int file_id, int user_id,
                               const std::string &new_filename)
 {
+    // 获取旧文件名用于记录历史，文件不存在则直接返回失败
+    auto file_info = get_file_info(file_id, user_id);
+    if (!file_info)
+        return false;
+
+    std::string old_name = file_info->original_filename;
+
     auto db = db_pool->get_connection();
     if (!db)
         return false;
@@ -317,6 +330,9 @@ bool FileManager::rename_file(int file_id, int user_id,
 
     bool success = db->execute(query);
     db_pool->return_connection(db);
+
+    if (success)
+        add_commit(user_id, file_id, "rename", old_name + " -> " + new_filename);
 
     return success;
 }
@@ -428,4 +444,62 @@ int FileManager::get_user_file_count(int user_id)
     db_pool->return_connection(db);
 
     return count;
+}
+
+// 记录文件操作到提交历史表
+void FileManager::add_commit(int user_id, int file_id, const std::string &operation, const std::string &filename)
+{
+    auto db = db_pool->get_connection();
+    if (!db)
+        return;
+
+    std::string query =
+        "INSERT INTO file_commits (user_id, file_id, operation, filename) VALUES (" +
+        std::to_string(user_id) + ", " +
+        std::to_string(file_id) + ", '" +
+        db->escape_string(operation) + "', '" +
+        db->escape_string(filename) + "')";
+
+    db->execute(query);
+    db_pool->return_connection(db);
+}
+
+// 获取用户文件提交历史，按时间倒序返回最近limit条记录
+std::vector<CommitInfo> FileManager::get_file_commits(int user_id, int limit)
+{
+    std::vector<CommitInfo> commits;
+
+    auto db = db_pool->get_connection();
+    if (!db)
+        return commits;
+
+    std::string query =
+        "SELECT id, user_id, file_id, operation, filename, commit_time "
+        "FROM file_commits WHERE user_id = " + std::to_string(user_id) +
+        " ORDER BY commit_time DESC LIMIT " + std::to_string(limit);
+
+    MYSQL_RES *result = db->query(query);
+    if (!result)
+    {
+        db_pool->return_connection(db);
+        return commits;
+    }
+
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(result)))
+    {
+        CommitInfo commit;
+        commit.id = std::stoi(row[0]);
+        commit.user_id = std::stoi(row[1]);
+        commit.file_id = row[2] ? std::stoi(row[2]) : -1;
+        commit.operation = row[3] ? row[3] : "";
+        commit.filename = row[4] ? row[4] : "";
+        commit.commit_time = row[5] ? row[5] : "";
+        commits.push_back(commit);
+    }
+
+    mysql_free_result(result);
+    db_pool->return_connection(db);
+
+    return commits;
 }

@@ -340,6 +340,40 @@ Authorization: Bearer {token}
 }
 ```
 
+### 11. 查看提交历史
+**GET** `/api/file/commits?limit=50`
+
+请求头:
+```
+Authorization: Bearer {token}
+```
+
+响应:
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": [
+    {
+      "id": 1,
+      "file_id": 5,
+      "operation": "upload",
+      "filename": "document.pdf",
+      "commit_time": "2024-01-01 10:00:00"
+    },
+    {
+      "id": 2,
+      "file_id": 5,
+      "operation": "rename",
+      "filename": "document.pdf -> report.pdf",
+      "commit_time": "2024-01-02 09:30:00"
+    }
+  ]
+}
+```
+
+支持的操作类型：`upload`（上传）、`rename`（重命名）、`delete`（删除）
+
 ## 测试
 
 ### 使用curl测试

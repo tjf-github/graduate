@@ -57,6 +57,7 @@ private:
     HttpResponse handle_file_delete(const HttpRequest &request);
     HttpResponse handle_file_rename(const HttpRequest &request);
     HttpResponse handle_file_search(const HttpRequest &request);
+    HttpResponse handle_file_commits(const HttpRequest &request);
 
     int get_user_id_from_session(const HttpRequest &request);
     std::string get_session_token(const HttpRequest &request);

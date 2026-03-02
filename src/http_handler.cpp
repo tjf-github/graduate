@@ -64,6 +64,8 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_file_rename(request);
     if (request.path == "/api/file/search" && request.method == "GET")
         return handle_file_search(request);
+    if (request.path == "/api/file/commits" && request.method == "GET")
+        return handle_file_commits(request);
 
     // 静态文件服务：简单的根目录映射
     std::string file_path;
@@ -423,6 +425,47 @@ HttpResponse HttpHandler::handle_file_search(const HttpRequest &request)
         JsonBuilder builder;
         builder.add("id", files[i].id);
         builder.add("filename", files[i].original_filename);
+        json_array += builder.build();
+    }
+    json_array += "]";
+
+    return json_response(200, "Success", json_array);
+}
+
+HttpResponse HttpHandler::handle_file_commits(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+        return error_response(401, "Unauthorized");
+
+    int limit = 50;
+    if (request.params.count("limit"))
+    {
+        try
+        {
+            limit = std::stoi(request.params.at("limit"));
+            if (limit < 1) limit = 1;
+            if (limit > 1000) limit = 1000;
+        }
+        catch (...)
+        {
+            return error_response(400, "Invalid limit parameter");
+        }
+    }
+
+    auto commits = file_manager->get_file_commits(user_id, limit);
+
+    std::string json_array = "[";
+    for (size_t i = 0; i < commits.size(); ++i)
+    {
+        if (i > 0)
+            json_array += ",";
+        JsonBuilder builder;
+        builder.add("id", commits[i].id);
+        builder.add("file_id", commits[i].file_id);
+        builder.add("operation", commits[i].operation);
+        builder.add("filename", commits[i].filename);
+        builder.add("commit_time", commits[i].commit_time);
         json_array += builder.build();
     }
     json_array += "]";

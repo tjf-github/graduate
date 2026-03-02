@@ -72,7 +72,21 @@ VALUES ('testuser', 'test@example.com',
         0, 10737418240)
 ON DUPLICATE KEY UPDATE username=username;
 
+-- 文件操作历史表（提交记录）
+CREATE TABLE IF NOT EXISTS file_commits (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    file_id INT,                          -- 允许NULL，保留已删除文件的历史记录（不设外键约束）
+    operation VARCHAR(50) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    commit_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_commit_time (commit_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 显示表结构
 SHOW TABLES;
 DESCRIBE users;
 DESCRIBE files;
+DESCRIBE file_commits;
