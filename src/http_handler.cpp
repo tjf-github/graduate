@@ -367,6 +367,7 @@ HttpResponse HttpHandler::handle_file_upload(const HttpRequest &request)
     }
 }
 
+// 创建分享码
 std::string HttpHandler::generate_share_code()
 {
     static const char chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
