@@ -260,6 +260,45 @@ bool UserManager::update_password(int user_id, const std::string &new_password)
     return success;
 }
 
+bool UserManager::update_profile(int user_id, const std::string &username, const std::string &email)
+{
+    auto db = db_pool->get_connection();
+    if (!db)
+        return false;
+
+    std::string escaped_username = db->escape_string(username);
+    std::string escaped_email = db->escape_string(email);
+
+    std::string duplicate_check =
+        "SELECT id FROM users WHERE (username = '" + escaped_username +
+        "' OR email = '" + escaped_email +
+        "') AND id != " + std::to_string(user_id);
+
+    MYSQL_RES *dup_result = db->query(duplicate_check);
+    if (!dup_result)
+    {
+        db_pool->return_connection(db);
+        return false;
+    }
+
+    int rows = mysql_num_rows(dup_result);
+    mysql_free_result(dup_result);
+    if (rows > 0)
+    {
+        db_pool->return_connection(db);
+        return false;
+    }
+
+    std::string query =
+        "UPDATE users SET username = '" + escaped_username +
+        "', email = '" + escaped_email +
+        "' WHERE id = " + std::to_string(user_id);
+
+    bool success = db->execute(query);
+    db_pool->return_connection(db);
+    return success;
+}
+
 bool UserManager::delete_user(int user_id)
 {
     auto db = db_pool->get_connection();
