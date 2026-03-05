@@ -340,6 +340,36 @@ Authorization: Bearer {token}
 }
 ```
 
+### 11. 更新用户资料
+**PUT** `/api/user/profile`
+
+请求头:
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+请求体:
+```json
+{
+  "username": "new_name",
+  "email": "new_email@example.com"
+}
+```
+
+### 12. 创建站内分享
+**POST** `/api/share/create`
+
+请求体:
+```json
+{
+  "file_id": 1
+}
+```
+
+### 13. 通过分享链接下载
+**GET** `/api/share/download?code={share_code}`
+
 ## 测试
 
 ### 使用curl测试

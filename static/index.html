@@ -6,222 +6,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloudisk 云盘系统</title>
     <style>
-        /* 基础样式布局 */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f9;
-            color: #333;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 50px auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        h1,
-        h2 {
-            text-align: center;
-            color: #007bff;
-        }
-
-        /* 表单样式 */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            box-sizing: border-box;
-            transition: border 0.3s;
-        }
-
-        input:focus {
-            border-color: #007bff;
-            outline: none;
-        }
-
-        /* 按钮样式 */
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        .btn-secondary {
-            background-color: #6c757d;
-            margin-top: 10px;
-        }
-
-        /* 功能区域切换 */
-        .hidden {
-            display: none;
-        }
-
-        .nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 15px;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: #007bff;
-            cursor: pointer;
-            margin-left: 20px;
-        }
-
-        .profile-card {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 18px;
-        }
-
-        .profile-item {
-            font-size: 14px;
-            color: #555;
-        }
-
-        .profile-item b {
-            color: #212529;
-        }
-
-        .storage-wrap {
-            grid-column: 1 / -1;
-        }
-
-        .storage-bar {
-            width: 100%;
-            height: 10px;
-            background: #dee2e6;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 6px;
-        }
-
-        .storage-fill {
-            height: 100%;
-            background: #28a745;
-            width: 0%;
-            transition: width 0.3s;
-        }
-
-        /* 表格样式 */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        th,
-        td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        th {
-            background-color: #f8f9fa;
-        }
-
-        /* 消息提示 */
-        #message {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 6px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 960px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
+        h1, h2 { text-align: center; color: #007bff; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        input:focus { border-color: #007bff; outline: none; }
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        .btn-secondary { background-color: #6c757d; margin-top: 10px; }
+        .hidden { display: none; }
+        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .nav-links a { text-decoration: none; color: #007bff; cursor: pointer; margin-left: 20px; }
+        .profile-card { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px; padding: 15px; margin-bottom: 18px; }
+        .profile-item { font-size: 14px; color: #555; }
+        .profile-item b { color: #212529; }
+        .storage-wrap { grid-column: 1 / -1; }
+        .storage-bar { width: 100%; height: 10px; background: #dee2e6; border-radius: 8px; overflow: hidden; margin-top: 6px; }
+        .storage-fill { height: 100%; background: #28a745; width: 0%; transition: width 0.3s; }
+        .profile-actions { display: flex; gap: 10px; margin-top: 8px; }
+        .small-btn { width: auto; padding: 6px 12px; font-size: 13px; }
+        .inline-share { display: flex; gap: 10px; margin: 12px 0 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; }
+        #message { margin-top: 20px; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .notify { position: fixed; right: 20px; top: 20px; z-index: 9999; min-width: 260px; max-width: 420px; box-shadow: 0 4px 18px rgba(0,0,0,.2); }
     </style>
 </head>
 
 <body>
-
     <div class="container" id="auth-section">
         <h1>Cloudisk 云盘</h1>
-
         <div id="login-form">
             <h2>用户登录</h2>
-            <div class="form-group">
-                <label>用户名</label>
-                <input type="text" id="login-username" placeholder="请输入用户名">
-            </div>
-            <div class="form-group">
-                <label>密码</label>
-                <input type="password" id="login-password" placeholder="请输入密码">
-            </div>
+            <div class="form-group"><label>用户名</label><input type="text" id="login-username" placeholder="请输入用户名"></div>
+            <div class="form-group"><label>密码</label><input type="password" id="login-password" placeholder="请输入密码"></div>
             <button onclick="handleLogin()">登录</button>
             <button class="btn-secondary" onclick="toggleAuth(false)">没有账号？前往注册</button>
         </div>
 
         <div id="register-form" class="hidden">
             <h2>用户注册</h2>
-            <div class="form-group">
-                <label>用户名</label>
-                <input type="text" id="reg-username" placeholder="请设置用户名">
-            </div>
-            <div class="form-group">
-                <label>电子邮箱</label>
-                <input type="email" id="reg-email" placeholder="user@example.com (仅作信息存储)">
-            </div>
-            <div class="form-group">
-                <label>密码</label>
-                <input type="password" id="reg-password" placeholder="请设置密码">
-            </div>
+            <div class="form-group"><label>用户名</label><input type="text" id="reg-username" placeholder="请设置用户名"></div>
+            <div class="form-group"><label>电子邮箱</label><input type="email" id="reg-email" placeholder="user@example.com"></div>
+            <div class="form-group"><label>密码</label><input type="password" id="reg-password" placeholder="请设置密码"></div>
             <button onclick="handleRegister()">立即注册</button>
             <button class="btn-secondary" onclick="toggleAuth(true)">已有账号？返回登录</button>
         </div>
-
-        <div id="message" class="hidden"></div>
+        <div id="message" class="hidden notify"></div>
     </div>
 
     <div class="container hidden" id="disk-section">
         <div class="nav">
             <span>欢迎回来, <b id="display-user"></b></span>
-            <div class="nav-links">
-                <a onclick="handleLogout()">安全退出</a>
-            </div>
+            <div class="nav-links"><a onclick="handleLogout()">安全退出</a></div>
         </div>
 
         <h2>我的云端文件</h2>
@@ -233,32 +75,35 @@
             <div class="profile-item">会话数：<b id="profile-sessions">-</b></div>
             <div class="profile-item">超时策略：<b id="profile-timeout">-</b></div>
             <div class="storage-wrap profile-item">存储使用：<b id="profile-storage">-</b>
-                <div class="storage-bar">
-                    <div class="storage-fill" id="profile-storage-fill"></div>
+                <div class="storage-bar"><div class="storage-fill" id="profile-storage-fill"></div></div>
+                <div class="profile-actions">
+                    <button class="small-btn" onclick="toggleProfileEditor(true)">修改用户名/邮箱</button>
+                </div>
+                <div id="profile-editor" class="hidden" style="margin-top:10px;">
+                    <div style="display:flex; gap:10px;">
+                        <input id="edit-username" type="text" placeholder="新用户名">
+                        <input id="edit-email" type="email" placeholder="新邮箱">
+                        <button class="small-btn" onclick="submitProfileUpdate()">保存</button>
+                        <button class="small-btn" style="background:#6c757d" onclick="toggleProfileEditor(false)">取消</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="file" id="file-selector" style="flex: 1;">
-            <button onclick="handleUpload()" style="width: auto; padding: 0 20px;">上传文件</button>
-            <button onclick="loadFileList()" style="width: auto; background-color: #28a745;">刷新</button>
+        <div class="inline-share">
+            <input id="share-link-input" type="text" placeholder="粘贴分享链接，例如 /api/share/download?code=XXXX">
+            <button onclick="downloadByShareLink()" style="width:auto;">下载分享文件</button>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <input type="file" id="file-selector" style="flex:1;">
+            <button onclick="handleUpload()" style="width:auto; padding:0 20px;">上传文件</button>
+            <button onclick="loadFileList()" style="width:auto; background-color:#28a745;">刷新</button>
         </div>
 
         <table>
-            <thead>
-                <tr>
-                    <th>文件名</th>
-                    <th>大小</th>
-                    <th>上传时间</th>
-                    <th>管理操作</th>
-                </tr>
-            </thead>
-            <tbody id="file-table-body">
-                <tr>
-                    <td colspan="4" style="text-align:center;">正在加载文件列表...</td>
-                </tr>
-            </tbody>
+            <thead><tr><th>文件名</th><th>大小</th><th>上传时间</th><th>管理操作</th></tr></thead>
+            <tbody id="file-table-body"><tr><td colspan="4" style="text-align:center;">正在加载文件列表...</td></tr></tbody>
         </table>
     </div>
 
@@ -267,7 +112,6 @@
         let currentToken = localStorage.getItem('cloudisk_token') || '';
         let currentUser = localStorage.getItem('cloudisk_user') || '';
 
-        // 页面初始化：检查本地是否有残留 Token
         window.onload = () => {
             if (currentToken && currentUser) {
                 document.getElementById('display-user').textContent = currentUser;
@@ -280,95 +124,74 @@
             }
         };
 
-        // UI 切换逻辑
         function toggleAuth(showLogin) {
             document.getElementById('login-form').classList.toggle('hidden', !showLogin);
             document.getElementById('register-form').classList.toggle('hidden', showLogin);
         }
-
         function showDiskSection() {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('disk-section').classList.remove('hidden');
         }
-
         function showMsg(text, isError = false) {
             const el = document.getElementById('message');
             el.textContent = text;
-            el.className = isError ? 'error' : 'success';
+            el.className = `notify ${isError ? 'error' : 'success'}`;
             el.classList.remove('hidden');
             setTimeout(() => el.classList.add('hidden'), 3000);
         }
+        function formatBytes(bytes) {
+            if (!Number.isFinite(bytes) || bytes < 0) return '-';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let v = bytes, i = 0;
+            while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+            return `${v.toFixed(2)} ${units[i]}`;
+        }
+        function toggleProfileEditor(show) {
+            const editor = document.getElementById('profile-editor');
+            editor.classList.toggle('hidden', !show);
+            if (show) {
+                document.getElementById('edit-username').value = document.getElementById('profile-username').textContent || '';
+                document.getElementById('edit-email').value = document.getElementById('profile-email').textContent || '';
+            }
+        }
 
-        // --- 核心 API 调用逻辑 ---
-
-        // 1. 注册 (包含 Email)
         async function handleRegister() {
             const username = document.getElementById('reg-username').value;
             const email = document.getElementById('reg-email').value;
             const password = document.getElementById('reg-password').value;
-
             if (!username || !email || !password) return showMsg('请填写所有字段', true);
-
             try {
-                const res = await fetch(`${API_BASE}/register`, {
-                    method: 'POST',
-                    body: JSON.stringify({ username, email, password })
-                });
+                const res = await fetch(`${API_BASE}/register`, { method: 'POST', body: JSON.stringify({ username, email, password }) });
                 const data = await res.json();
-                if (data.code === 200) {
-                    showMsg('注册成功！正在返回登录...');
-                    setTimeout(() => toggleAuth(true), 1500);
-                } else {
-                    showMsg(data.message || '注册失败', true);
-                }
-            } catch (e) { showMsg('网络请求失败', true); }
+                if (data.code === 200) { showMsg('注册成功！正在返回登录...'); setTimeout(() => toggleAuth(true), 1200); }
+                else showMsg(data.message || '注册失败', true);
+            } catch (_) { showMsg('网络请求失败', true); }
         }
 
-        // 2. 登录
         async function handleLogin() {
             const username = document.getElementById('login-username').value;
             const password = document.getElementById('login-password').value;
-
             try {
-                const res = await fetch(`${API_BASE}/login`, {
-                    method: 'POST',
-                    body: JSON.stringify({ username, password })
-                });
+                const res = await fetch(`${API_BASE}/login`, { method: 'POST', body: JSON.stringify({ username, password }) });
                 const data = await res.json();
                 if (data.code === 200) {
                     currentToken = data.data.token;
+                    currentUser = username;
                     localStorage.setItem('cloudisk_token', currentToken);
                     localStorage.setItem('cloudisk_user', username);
                     document.getElementById('display-user').textContent = username;
                     showDiskSection();
                     loadUserProfile();
                     loadFileList();
-                } else {
-                    showMsg(data.message || '登录失败', true);
-                }
-            } catch (e) { showMsg('连接服务器失败', true); }
-        }
-
-        function formatBytes(bytes) {
-            if (!Number.isFinite(bytes) || bytes < 0) return '-';
-            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-            let value = bytes;
-            let idx = 0;
-            while (value >= 1024 && idx < units.length - 1) {
-                value /= 1024;
-                idx++;
-            }
-            return `${value.toFixed(2)} ${units[idx]}`;
+                } else showMsg(data.message || '登录失败', true);
+            } catch (_) { showMsg('连接服务器失败', true); }
         }
 
         async function loadUserProfile() {
             try {
-                const res = await fetch(`${API_BASE}/user/info`, {
-                    headers: { 'Authorization': `Bearer ${currentToken}` }
-                });
+                const res = await fetch(`${API_BASE}/user/info`, { headers: { 'Authorization': `Bearer ${currentToken}` } });
                 const data = await res.json();
                 if (data.code !== 200 || !data.data) return;
-
                 const p = data.data;
                 document.getElementById('profile-id').textContent = p.id ?? '-';
                 document.getElementById('profile-username').textContent = p.username || currentUser || '-';
@@ -376,31 +199,43 @@
                 document.getElementById('profile-created').textContent = p.created_at || '-';
                 document.getElementById('profile-sessions').textContent = p.active_sessions ?? '-';
                 document.getElementById('profile-timeout').textContent = p.timeout_minutes ? `${p.timeout_minutes} 分钟` : '-';
-
-                const used = Number(p.storage_used || 0);
-                const limit = Number(p.storage_limit || 0);
+                const used = Number(p.storage_used || 0), limit = Number(p.storage_limit || 0);
                 document.getElementById('profile-storage').textContent = `${formatBytes(used)} / ${formatBytes(limit)}`;
-
-                let percent = 0;
-                if (limit > 0) percent = Math.min(100, Math.round((used / limit) * 100));
+                const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
                 const fill = document.getElementById('profile-storage-fill');
                 fill.style.width = `${percent}%`;
                 fill.style.background = percent > 90 ? '#dc3545' : percent > 75 ? '#ffc107' : '#28a745';
-            } catch (e) {
-                console.error('用户资料加载失败', e);
-            }
+            } catch (e) { console.error('用户资料加载失败', e); }
         }
 
-        // 3. 获取文件列表
+        async function submitProfileUpdate() {
+            const username = document.getElementById('edit-username').value.trim();
+            const email = document.getElementById('edit-email').value.trim();
+            if (!username || !email) return showMsg('用户名和邮箱不能为空', true);
+            try {
+                const res = await fetch(`${API_BASE}/user/profile`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email })
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    currentUser = username;
+                    localStorage.setItem('cloudisk_user', username);
+                    document.getElementById('display-user').textContent = username;
+                    showMsg('资料更新成功');
+                    toggleProfileEditor(false);
+                    loadUserProfile();
+                } else showMsg(data.message || '资料更新失败', true);
+            } catch (_) { showMsg('资料更新请求失败', true); }
+        }
+
         async function loadFileList() {
             try {
-                const res = await fetch(`${API_BASE}/file/list`, {
-                    headers: { 'Authorization': `Bearer ${currentToken}` }
-                });
+                const res = await fetch(`${API_BASE}/file/list`, { headers: { 'Authorization': `Bearer ${currentToken}` } });
                 const data = await res.json();
                 const tbody = document.getElementById('file-table-body');
                 tbody.innerHTML = '';
-
                 if (data.code === 200 && data.data) {
                     const files = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
                     if (files.length === 0) {
@@ -408,53 +243,61 @@
                         return;
                     }
                     files.forEach(f => {
+                        const safeName = (f.original_filename || f.filename || 'file').replace(/'/g, "\\'");
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>${f.original_filename || f.filename}</td>
                             <td>${(f.size / 1024).toFixed(2)} KB</td>
                             <td>${f.upload_date}</td>
                             <td>
-                                <button onclick="downloadFile(${f.id}, '${f.original_filename}')" style="width:auto; padding:5px 10px; background:#28a745">下载</button>
+                                <button onclick="downloadFile(${f.id}, '${safeName}')" style="width:auto; padding:5px 10px; background:#28a745">下载</button>
+                                <button onclick="createShare(${f.id})" style="width:auto; padding:5px 10px; background:#6f42c1">分享</button>
                                 <button onclick="deleteFile(${f.id})" style="width:auto; padding:5px 10px; background:#dc3545">删除</button>
-                            </td>
-                        `;
+                            </td>`;
                         tbody.appendChild(tr);
                     });
                 }
-            } catch (e) { console.error("列表加载失败", e); }
+            } catch (e) { console.error('列表加载失败', e); }
         }
 
-        // 4. 上传文件 (使用二进制流)
         async function handleUpload() {
             const fileInput = document.getElementById('file-selector');
             if (fileInput.files.length === 0) return alert('请先选择文件');
             const file = fileInput.files[0];
-
             try {
-                const res = await fetch(`${API_BASE}/file/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${currentToken}`,
-                        'X-Filename': encodeURIComponent(file.name)
-                    },
-                    body: file
+                await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', `${API_BASE}/file/upload`);
+                    xhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
+                    xhr.setRequestHeader('X-Filename', encodeURIComponent(file.name));
+                    xhr.upload.onprogress = (evt) => {
+                        if (evt.lengthComputable) showMsg(`上传进度 ${Math.round((evt.loaded / evt.total) * 100)}%`);
+                    };
+                    xhr.onload = () => {
+                        try {
+                            const data = JSON.parse(xhr.responseText || '{}');
+                            if (data.code === 200) {
+                                showMsg('文件上传成功');
+                                loadUserProfile();
+                                loadFileList();
+                                resolve();
+                            } else {
+                                showMsg(data.message || '上传失败', true);
+                                reject(new Error('upload failed'));
+                            }
+                        } catch (e) { showMsg('上传响应解析失败', true); reject(e); }
+                    };
+                    xhr.onerror = () => { showMsg('上传过程中出错', true); reject(new Error('network')); };
+                    xhr.send(file);
                 });
-                const data = await res.json();
-                if (data.code === 200) {
-                    showMsg('文件上传成功');
-                    loadUserProfile();
-                    loadFileList();
-                } else { showMsg('上传失败', true); }
-            } catch (e) { showMsg('上传过程中出错', true); }
+            } catch (_) {}
         }
 
-        // 5. 下载文件 (Blob 处理)
         async function downloadFile(id, name) {
             try {
-                const res = await fetch(`${API_BASE}/file/download?id=${id}`, {
-                    headers: { 'Authorization': `Bearer ${currentToken}` }
-                });
+                const res = await fetch(`${API_BASE}/file/download?id=${id}`, { headers: { 'Authorization': `Bearer ${currentToken}` } });
                 const blob = await res.blob();
+                showMsg('下载完成 100%');
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -462,10 +305,55 @@
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
-            } catch (e) { alert('下载失败'); }
+            } catch (_) { showMsg('下载失败', true); }
         }
 
-        // 6. 删除文件
+        async function createShare(fileId) {
+            try {
+                const res = await fetch(`${API_BASE}/share/create`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_id: fileId })
+                });
+                const data = await res.json();
+                if (data.code === 200 && data.data) {
+                    const fullUrl = `${window.location.origin}${data.data.share_url}`;
+                    await navigator.clipboard.writeText(fullUrl);
+                    showMsg('分享链接已复制');
+                    document.getElementById('share-link-input').value = fullUrl;
+                } else showMsg(data.message || '分享失败', true);
+            } catch (_) { showMsg('分享失败', true); }
+        }
+
+        async function downloadByShareLink() {
+            const raw = document.getElementById('share-link-input').value.trim();
+            if (!raw) return showMsg('请先输入分享链接', true);
+            let path = raw;
+            if (raw.startsWith('http')) {
+                try { const u = new URL(raw); path = u.pathname + u.search; } catch (_) {}
+            }
+            try {
+                const res = await fetch(path);
+                if (!res.ok) {
+                    const err = await res.text();
+                    showMsg(err || '分享下载失败', true);
+                    return;
+                }
+                const blob = await res.blob();
+                const disposition = res.headers.get('Content-Disposition') || '';
+                const m = disposition.match(/filename="([^"]+)"/);
+                const name = m ? m[1] : 'shared_file';
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                showMsg('分享文件下载成功');
+            } catch (_) { showMsg('分享下载失败', true); }
+        }
+
         async function deleteFile(id) {
             if (!confirm('确定要永久删除此文件吗？')) return;
             try {
@@ -480,7 +368,7 @@
                     loadUserProfile();
                     loadFileList();
                 }
-            } catch (e) { alert('操作失败'); }
+            } catch (_) { showMsg('操作失败', true); }
         }
 
         function handleLogout() {
