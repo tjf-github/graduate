@@ -58,9 +58,13 @@ public:
     std::string get_error() const;
 
 private:
+    // 连接对象
     MYSQL *conn;
+    // 数据库配置
     DBConfig config;
+    // 互斥锁，保护连接对象的线程安全
     mutable std::mutex db_mutex;
+    // 连接状态
     bool connected;
 };
 

@@ -9,6 +9,7 @@ Database::Database(const DBConfig &cfg)
     conn = mysql_init(nullptr);
     if (!conn)
     {
+        // 抛出异常，表示MySQL初始化失败
         throw std::runtime_error("MySQL initialization failed");
     }
 }
