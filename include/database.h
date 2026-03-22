@@ -18,6 +18,7 @@
 // 数据库连接池类
 #include <mutex>
 
+// 数据库配置结构体，包含连接数据库所需的参数
 struct DBConfig
 {
     std::string host = "localhost";

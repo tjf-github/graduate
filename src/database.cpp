@@ -6,6 +6,7 @@
 Database::Database(const DBConfig &cfg)
     : conn(nullptr), config(cfg), connected(false)
 {
+    // 初始化MySQL连接对象
     conn = mysql_init(nullptr);
     if (!conn)
     {

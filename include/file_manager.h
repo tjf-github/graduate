@@ -20,6 +20,14 @@ struct FileInfo
     std::string upload_date;
 };
 
+struct ShareInfo
+{
+    std::string share_code;
+    int owner_user_id;
+    int file_id;
+    std::string created_at;
+};
+
 // 文件管理类，需要对mysql和路径（有了路径就知道文件）进行封装，提供文件上传、下载、删除、重命名、搜索等功能
 class FileManager
 {
@@ -58,7 +66,13 @@ public:
     std::vector<FileInfo> search_files(int user_id,
                                        const std::string &keyword);
 
-    // 获取存储统计
+    // 形成分享码
+    std::optional<std::vector<char>> create_download_shared_file(const std::string &code);
+
+    // 通过分享码下载文件
+    std::optional<FileInfo> get_shared_file_info(const std::string &code);
+
+    //  获取存储统计
     long long get_user_storage_used(int user_id);
     int get_user_file_count(int user_id);
 
@@ -71,7 +85,7 @@ private:
     // 生成唯一文件名
     std::string generate_unique_filename(const std::string &original_filename);
 
-    // 构建完整文件路径
+    // 构建完整文件路径，例如/storage/12345/unique_filename.ext
     std::string get_full_path(int user_id, const std::string &filename);
 
     // 创建用户目录

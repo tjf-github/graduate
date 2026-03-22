@@ -5,9 +5,9 @@
 
 #ifdef _WIN32
 // Windows平台使用CoCreateGuid生成UUID，并使用direct.h来创建目录
-#include <direct.h>
+// #include <direct.h>
 // Windows平台使用objbase.h来生成UUID，并使用iomanip来格式化UUID字符串
-#include <objbase.h>
+// #include <objbase.h>
 #include <iomanip>
 // Windows implementation of uuid/uuid.h functionality using CoCreateGuid
 #define mkdir(path, mode) _mkdir(path)
@@ -85,9 +85,11 @@ bool FileManager::create_user_directory(int user_id)
     return mkdir(user_dir.c_str(), 0755) == 0 || errno == EEXIST;
 }
 
+// 文件上传，返回文件信息，如果上传失败则返回std::nullopt
 // optional类是C++17引入的一个模板类，用于表示一个值可能存在也可能不存在的情况。它提供了一种安全的方式来处理可能为空的值，避免了使用裸指针或特殊值（如nullptr）来表示缺失数据的风险。
 std::optional<FileInfo> FileManager::upload_file(int user_id,
                                                  const std::string &original_filename,
+                                                 // mime_type是文件的MIME类型，例如"image/png"、"application/pdf"等，用于描述文件的格式和类型
                                                  const std::string &mime_type,
                                                  const char *data,
                                                  size_t size)
@@ -176,6 +178,7 @@ std::optional<std::vector<char>> FileManager::download_file(int file_id, int use
         return std::nullopt;
     }
 
+    // 将文件内容读取到一个vector<char>中，大小为file_info->file_size
     std::vector<char> data(file_info->file_size);
     file.read(data.data(), file_info->file_size);
     file.close();
@@ -183,7 +186,7 @@ std::optional<std::vector<char>> FileManager::download_file(int file_id, int use
     return data;
 }
 
-// 获取文件信息，如果文件不存在或用户没有权限访问则返回std::nullopt
+// 从mysql获取文件信息，如果文件不存在或用户没有权限访问则返回std::nullopt
 std::optional<FileInfo> FileManager::get_file_info(int file_id, int user_id)
 {
     auto db = db_pool->get_connection();
@@ -204,6 +207,7 @@ std::optional<FileInfo> FileManager::get_file_info(int file_id, int user_id)
         return std::nullopt;
     }
 
+    // 从结果集中获取第一行数据，如果没有数据则表示文件不存在或用户没有权限访问，返回std::nullopt
     MYSQL_ROW row = mysql_fetch_row(result);
     if (!row)
     {
@@ -366,6 +370,22 @@ std::vector<FileInfo> FileManager::search_files(int user_id,
     db_pool->return_connection(db);
 
     return files;
+}
+
+// 形成分享码
+std::optional<std::vector<char>> create_download_shared_file(const std::string &code)
+{
+    // 这里应该实现生成分享码的逻辑，例如将文件信息和分享码存储在数据库中，并返回分享码对应的文件数据
+    // 由于这个功能比较复杂，涉及到安全性和权限控制等问题，这里暂时返回std::nullopt表示未实现
+    return std::nullopt;
+}
+
+// 通过分享码下载文件
+std::optional<FileInfo> get_shared_file_info(const std::string &code)
+{
+    // 这里应该实现通过分享码获取文件信息的逻辑，例如从数据库中查询分享码对应的文件信息，并返回文件信息
+    // 由于这个功能比较复杂，涉及到安全性和权限控制等问题，这里暂时返回std::nullopt表示未实现
+    return std::nullopt;
 }
 
 // 获取存储统计，返回用户已使用的存储空间总大小和文件数量，如果用户没有文件则返回0

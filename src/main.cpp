@@ -7,6 +7,7 @@
 // 全局服务器实例指针，用于信号处理
 CloudDiskServer *server_instance = nullptr;
 
+// 捕捉SIGINT和SIGTERM信号，优雅关闭服务器
 void signal_handler(int signal)
 {
     if (signal == SIGINT || signal == SIGTERM)
@@ -79,6 +80,7 @@ int main(int argc, char *argv[])
 
     // 创建服务器实例
     CloudDiskServer server(port, db_config, storage_path);
+    // 将服务器实例指针赋值给全局变量，供信号处理使用
     server_instance = &server;
 
     // 启动服务器

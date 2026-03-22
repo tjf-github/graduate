@@ -597,6 +597,17 @@ HttpResponse HttpHandler::handle_file_search(const HttpRequest &request)
     return json_response(200, "Success", json_array);
 }
 
+// 生成分享码和下载分享文件的接口
+HttpResponse handle_share_create(const HttpRequest &request)
+{
+}
+
+// 通过分享码下载文件的接口
+HttpResponse handle_share_download(const HttpRequest &request)
+{
+    mysql_query("SELECT file_id, owner_user_id FROM shares WHERE share_code = '" + db->escape_string(code) + "'");
+}
+
 std::string HttpHandler::get_session_token(const HttpRequest &request)
 {
     if (request.headers.count("Authorization"))
@@ -729,6 +740,7 @@ HttpRequest HttpParser::parse(const std::string &raw_request)
     return req;
 }
 
+// 构建HTTP响应字符串
 std::string HttpParser::build_response(const HttpResponse &response)
 {
     std::ostringstream oss;
