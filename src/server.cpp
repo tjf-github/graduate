@@ -176,11 +176,15 @@ void CloudDiskServer::handle_client(int client_fd)
 
     // 发送响应
     std::string response_str = HttpParser::build_response(response);
-    write(client_fd, response_str.c_str(), response_str.length());
+    auto bytes_written = write(client_fd, response_str.c_str(), response_str.length());
+    if (bytes_written < 0)
+    {
+        LOG_WARN("Failed to write response to client");
+    }
 
     // 关闭连接
     close(client_fd);
-    cout << "Client disconnected" << std::endl;
+    std::cout << "Client disconnected" << std::endl;
 }
 
 // 服务器主循环

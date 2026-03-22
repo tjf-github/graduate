@@ -36,6 +36,7 @@ public:
     // 更新用户信息
     bool update_storage_used(int user_id, long long size_delta);
     bool update_password(int user_id, const std::string& new_password);
+    bool update_profile(int user_id, const std::string& username, const std::string& email);
     
     // 检查用户存储空间
     bool check_storage_available(int user_id, long long file_size);
