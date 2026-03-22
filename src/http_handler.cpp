@@ -2,6 +2,8 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <random>
+#include <chrono>
 #include "json_helper.h"
 #include "logger.h"
 
@@ -48,8 +50,12 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_register(request);
     if (request.path == "/api/login" && request.method == "POST")
         return handle_login(request);
+    if (request.path == "/api/logout" && request.method == "POST")
+        return handle_logout(request);
     if (request.path == "/api/user/info" && request.method == "GET")
         return handle_user_info(request);
+    if (request.path == "/api/user/profile" && (request.method == "PUT" || request.method == "POST"))
+        return handle_user_profile_update(request);
 
     // 文件操作
     if (request.path == "/api/file/list" && request.method == "GET")
@@ -58,12 +64,16 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_file_upload(request);
     if (request.path.find("/api/file/download") == 0 && request.method == "GET")
         return handle_file_download(request);
-    if (request.path == "/api/file/delete" && request.method == "POST")
+    if (request.path == "/api/file/delete" && (request.method == "POST" || request.method == "DELETE"))
         return handle_file_delete(request);
-    if (request.path == "/api/file/rename" && request.method == "POST")
+    if (request.path == "/api/file/rename" && (request.method == "POST" || request.method == "PUT"))
         return handle_file_rename(request);
     if (request.path == "/api/file/search" && request.method == "GET")
         return handle_file_search(request);
+    if (request.path == "/api/share/create" && request.method == "POST")
+        return handle_share_create(request);
+    if (request.path.find("/api/share/download") == 0 && request.method == "GET")
+        return handle_share_download(request);
 
     // 静态文件服务：简单的根目录映射
     std::string file_path;
@@ -217,17 +227,61 @@ HttpResponse HttpHandler::handle_user_info(const HttpRequest &request)
         return error_response(401, "Unauthorized");
     }
 
-    // TODO: Ideally we should get user info from DB, but for now just mock or minimal
-    /*
-    auto user = user_manager->get_user(user_id);
-    if(user) { ... }
-    */
+    auto user = user_manager->get_user_by_id(user_id);
+    if (!user)
+    {
+        return error_response(404, "User not found");
+    }
+
     JsonBuilder builder;
-    builder.add("user_id", user_id);
+    builder.add("id", user->id);
+    builder.add("username", user->username);
+    builder.add("email", user->email);
+    builder.add("storage_used", user->storage_used);
+    builder.add("storage_limit", user->storage_limit);
+    builder.add("created_at", user->created_at);
     builder.add("active_sessions", static_cast<int>(session_manager->session_count()));
     builder.add("timeout_minutes", session_manager->get_timeout_minutes());
 
     return json_response(200, "User info", builder.build());
+}
+
+HttpResponse HttpHandler::handle_user_profile_update(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+    {
+        return error_response(401, "Unauthorized");
+    }
+
+    JsonParser parser(request.body);
+    std::string username = parser.get_string("username");
+    std::string email = parser.get_string("email");
+
+    if (username.empty() || email.empty())
+    {
+        return error_response(400, "Username and email are required");
+    }
+
+    if (!user_manager->update_profile(user_id, username, email))
+    {
+        return error_response(400, "Update failed, username or email may already exist");
+    }
+
+    auto user = user_manager->get_user_by_id(user_id);
+    if (!user)
+    {
+        return error_response(500, "Failed to load updated profile");
+    }
+
+    JsonBuilder builder;
+    builder.add("id", user->id);
+    builder.add("username", user->username);
+    builder.add("email", user->email);
+    builder.add("storage_used", user->storage_used);
+    builder.add("storage_limit", user->storage_limit);
+    builder.add("created_at", user->created_at);
+    return json_response(200, "Profile updated", builder.build());
 }
 
 HttpResponse HttpHandler::handle_file_list(const HttpRequest &request)
@@ -277,6 +331,17 @@ HttpResponse HttpHandler::handle_file_upload(const HttpRequest &request)
 
     std::string filename = "uploaded_file";
 
+    auto user = user_manager->get_user_by_id(user_id);
+    if (!user)
+    {
+        return error_response(404, "User not found");
+    }
+
+    if (user->storage_used + static_cast<long long>(request.body.size()) > user->storage_limit)
+    {
+        return error_response(400, "Insufficient storage space");
+    }
+
     // 逻辑合并：如果 Header 存在，只执行解码赋值
     if (request.headers.count("X-Filename"))
     {
@@ -300,6 +365,122 @@ HttpResponse HttpHandler::handle_file_upload(const HttpRequest &request)
     {
         return error_response(500, "Upload failed");
     }
+}
+
+std::string HttpHandler::generate_share_code()
+{
+    static const char chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dis(0, static_cast<int>(sizeof(chars) - 2));
+
+    std::string code;
+    for (int i = 0; i < 8; ++i)
+    {
+        code += chars[dis(gen)];
+    }
+    return code;
+}
+
+std::string HttpHandler::build_expire_date(int expire_hours) const
+{
+    if (expire_hours <= 0)
+    {
+        return "";
+    }
+
+    auto expire_time = std::chrono::system_clock::now() + std::chrono::hours(expire_hours);
+    std::time_t expire_tt = std::chrono::system_clock::to_time_t(expire_time);
+    std::tm tm = *std::localtime(&expire_tt);
+
+    char buffer[20];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm);
+    return buffer;
+}
+
+HttpResponse HttpHandler::handle_share_create(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+    {
+        return error_response(401, "Unauthorized");
+    }
+
+    JsonParser parser(request.body);
+    int file_id = parser.get_int("file_id", -1);
+    int expire_hours = parser.get_int("expire_hours", 24);
+    if (file_id == -1)
+    {
+        return error_response(400, "Missing file_id");
+    }
+
+    auto info = file_manager->get_file_info(file_id, user_id);
+    if (!info)
+    {
+        return error_response(404, "File not found");
+    }
+
+    std::optional<ShareLinkInfo> share;
+    std::string expire_date = build_expire_date(expire_hours);
+    for (int i = 0; i < 5; ++i)
+    {
+        std::string share_code = generate_share_code();
+        share = file_manager->create_share_link(file_id, user_id, share_code, expire_date);
+        if (share)
+        {
+            break;
+        }
+    }
+
+    if (!share)
+    {
+        return error_response(500, "Failed to create share link");
+    }
+
+    JsonBuilder builder;
+    builder.add("share_code", share->share_code);
+    builder.add("share_url", "/api/share/download?code=" + share->share_code);
+    builder.add("file_id", file_id);
+    if (!share->expire_date.empty())
+    {
+        builder.add("expire_date", share->expire_date);
+    }
+    return json_response(200, "Share created", builder.build());
+}
+
+HttpResponse HttpHandler::handle_share_download(const HttpRequest &request)
+{
+    std::string code;
+    if (request.params.count("code"))
+    {
+        code = request.params.at("code");
+    }
+    if (code.empty())
+    {
+        return error_response(400, "Missing share code");
+    }
+
+    auto share = file_manager->get_share_by_code(code);
+    if (!share)
+    {
+        return error_response(404, "Share link not found or expired");
+    }
+
+    auto data = file_manager->download_file(share->file_id, share->user_id);
+    if (!data)
+    {
+        return error_response(500, "Failed to download shared file");
+    }
+
+    file_manager->increment_share_access_count(code);
+
+    HttpResponse response;
+    response.status_code = 200;
+    response.status_text = "OK";
+    response.headers["Content-Type"] = "application/octet-stream";
+    response.headers["Content-Disposition"] = "attachment; filename=\"" + share->original_filename + "\"";
+    response.body = std::string(data->begin(), data->end());
+    return response;
 }
 HttpResponse HttpHandler::handle_file_download(const HttpRequest &request)
 {
@@ -474,6 +655,36 @@ HttpRequest HttpParser::parse(const std::string &raw_request)
 
     std::istringstream line_iss(line);
     line_iss >> req.method >> req.path >> req.version;
+
+    size_t query_pos = req.path.find('?');
+    if (query_pos != std::string::npos)
+    {
+        std::string query_str = req.path.substr(query_pos + 1);
+        req.path = req.path.substr(0, query_pos);
+
+        size_t start = 0;
+        while (start < query_str.length())
+        {
+            size_t end = query_str.find('&', start);
+            if (end == std::string::npos)
+                end = query_str.length();
+
+            std::string pair = query_str.substr(start, end - start);
+            size_t eq = pair.find('=');
+            if (eq != std::string::npos)
+            {
+                std::string key = pair.substr(0, eq);
+                std::string value = url_decode(pair.substr(eq + 1));
+                req.params[key] = value;
+            }
+            else if (!pair.empty())
+            {
+                req.params[pair] = "";
+            }
+
+            start = end + 1;
+        }
+    }
 
     // 2. 解析 Headers
     int content_length = 0;

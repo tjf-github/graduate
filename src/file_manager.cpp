@@ -429,3 +429,123 @@ int FileManager::get_user_file_count(int user_id)
 
     return count;
 }
+
+std::optional<ShareLinkInfo> FileManager::create_share_link(int file_id, int user_id,
+                                                            const std::string &share_code,
+                                                            const std::string &expire_date)
+{
+    auto file_info = get_file_info(file_id, user_id);
+    if (!file_info)
+    {
+        return std::nullopt;
+    }
+
+    auto db = db_pool->get_connection();
+    if (!db)
+    {
+        return std::nullopt;
+    }
+
+    std::string expire_value = "NULL";
+    if (!expire_date.empty())
+    {
+        expire_value = "'" + db->escape_string(expire_date) + "'";
+    }
+
+    std::string query =
+        "INSERT INTO share_links (file_id, user_id, share_code, expire_date) VALUES (" +
+        std::to_string(file_id) + ", " +
+        std::to_string(user_id) + ", '" +
+        db->escape_string(share_code) + "', " +
+        expire_value + ")";
+
+    if (!db->execute(query))
+    {
+        db_pool->return_connection(db);
+        return std::nullopt;
+    }
+
+    int share_id = static_cast<int>(db->last_insert_id());
+    db_pool->return_connection(db);
+
+    ShareLinkInfo share;
+    share.id = share_id;
+    share.file_id = file_id;
+    share.user_id = user_id;
+    share.share_code = share_code;
+    share.expire_date = expire_date;
+    share.access_count = 0;
+    share.original_filename = file_info->original_filename;
+    share.file_path = file_info->file_path;
+    share.mime_type = file_info->mime_type;
+    share.file_size = file_info->file_size;
+    return share;
+}
+
+std::optional<ShareLinkInfo> FileManager::get_share_by_code(const std::string &share_code)
+{
+    auto db = db_pool->get_connection();
+    if (!db)
+    {
+        return std::nullopt;
+    }
+
+    std::string query =
+        "SELECT s.id, s.file_id, s.user_id, s.share_code, "
+        "COALESCE(DATE_FORMAT(s.expire_date, '%Y-%m-%d %H:%i:%s'), ''), "
+        "s.access_count, DATE_FORMAT(s.created_at, '%Y-%m-%d %H:%i:%s'), "
+        "f.original_filename, f.file_path, f.mime_type, f.file_size "
+        "FROM share_links s "
+        "JOIN files f ON s.file_id = f.id "
+        "WHERE s.share_code = '" + db->escape_string(share_code) + "' "
+        "AND (s.expire_date IS NULL OR s.expire_date > NOW())";
+
+    MYSQL_RES *result = db->query(query);
+    if (!result)
+    {
+        db_pool->return_connection(db);
+        return std::nullopt;
+    }
+
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row)
+    {
+        mysql_free_result(result);
+        db_pool->return_connection(db);
+        return std::nullopt;
+    }
+
+    ShareLinkInfo share;
+    share.id = std::stoi(row[0]);
+    share.file_id = std::stoi(row[1]);
+    share.user_id = std::stoi(row[2]);
+    share.share_code = row[3] ? row[3] : "";
+    share.expire_date = row[4] ? row[4] : "";
+    share.access_count = std::stoi(row[5] ? row[5] : "0");
+    share.created_at = row[6] ? row[6] : "";
+    share.original_filename = row[7] ? row[7] : "";
+    share.file_path = row[8] ? row[8] : "";
+    share.mime_type = row[9] ? row[9] : "";
+    share.file_size = std::stoll(row[10] ? row[10] : "0");
+
+    mysql_free_result(result);
+    db_pool->return_connection(db);
+    return share;
+}
+
+bool FileManager::increment_share_access_count(const std::string &share_code)
+{
+    auto db = db_pool->get_connection();
+    if (!db)
+    {
+        return false;
+    }
+
+    std::string query =
+        "UPDATE share_links SET access_count = access_count + 1 "
+        "WHERE share_code = '" + db->escape_string(share_code) + "'";
+
+    bool success = db->execute(query);
+    db_pool->return_connection(db);
+    return success;
+}

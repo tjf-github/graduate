@@ -20,6 +20,21 @@ struct FileInfo
     std::string upload_date;
 };
 
+struct ShareLinkInfo
+{
+    int id;
+    int file_id;
+    int user_id;
+    std::string share_code;
+    std::string expire_date;
+    int access_count;
+    std::string created_at;
+    std::string original_filename;
+    std::string file_path;
+    std::string mime_type;
+    long long file_size;
+};
+
 // 文件管理类，需要对mysql和路径（有了路径就知道文件）进行封装，提供文件上传、下载、删除、重命名、搜索等功能
 class FileManager
 {
@@ -61,6 +76,13 @@ public:
     // 获取存储统计
     long long get_user_storage_used(int user_id);
     int get_user_file_count(int user_id);
+
+    // 分享链接
+    std::optional<ShareLinkInfo> create_share_link(int file_id, int user_id,
+                                                   const std::string &share_code,
+                                                   const std::string &expire_date = "");
+    std::optional<ShareLinkInfo> get_share_by_code(const std::string &share_code);
+    bool increment_share_access_count(const std::string &share_code);
 
 private:
     // 数据库连接池
