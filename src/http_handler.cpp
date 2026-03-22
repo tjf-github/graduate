@@ -367,22 +367,6 @@ HttpResponse HttpHandler::handle_file_upload(const HttpRequest &request)
     }
 }
 
-// 创建分享码
-std::string HttpHandler::generate_share_code()
-{
-    static const char chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dis(0, static_cast<int>(sizeof(chars) - 2));
-
-    std::string code;
-    for (int i = 0; i < 8; ++i)
-    {
-        code += chars[dis(gen)];
-    }
-    return code;
-}
-
 HttpResponse HttpHandler::handle_share_create(const HttpRequest &request)
 {
     int user_id = get_user_id_from_session(request);
@@ -398,29 +382,16 @@ HttpResponse HttpHandler::handle_share_create(const HttpRequest &request)
         return error_response(400, "Missing file_id");
     }
 
-    auto info = file_manager->get_file_info(file_id, user_id);
-    if (!info)
+    // 调用 FileManager 生成并保存分享码到数据库
+    std::string share_code = file_manager->create_share_code(file_id, user_id);
+    if (share_code.empty())
     {
-        return error_response(404, "File not found");
-    }
-
-    ShareInfo share;
-    share.owner_user_id = user_id;
-    share.file_id = file_id;
-    share.created_at = std::to_string(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
-
-    {
-        std::lock_guard<std::mutex> lock(share_mutex);
-        do
-        {
-            share.share_code = generate_share_code();
-        } while (shares.count(share.share_code));
-        shares[share.share_code] = share;
+        return error_response(500, "Failed to create share code");
     }
 
     JsonBuilder builder;
-    builder.add("share_code", share.share_code);
-    builder.add("share_url", "/api/share/download?code=" + share.share_code);
+    builder.add("share_code", share_code);
+    builder.add("share_url", "/api/share/download?code=" + share_code);
     builder.add("file_id", file_id);
     return json_response(200, "Share created", builder.build());
 }
@@ -432,29 +403,21 @@ HttpResponse HttpHandler::handle_share_download(const HttpRequest &request)
     {
         code = request.params.at("code");
     }
+
     if (code.empty())
     {
         return error_response(400, "Missing share code");
     }
 
-    ShareInfo share;
-    {
-        std::lock_guard<std::mutex> lock(share_mutex);
-        auto it = shares.find(code);
-        if (it == shares.end())
-        {
-            return error_response(404, "Share link not found");
-        }
-        share = it->second;
-    }
-
-    auto file_info = file_manager->get_file_info(share.file_id, share.owner_user_id);
+    // 从数据库获取分享的文件信息
+    auto file_info = file_manager->get_shared_file_info(code);
     if (!file_info)
     {
-        return error_response(404, "Shared file not found");
+        return error_response(404, "Shared file not found or invalid code");
     }
 
-    auto data = file_manager->download_file(share.file_id, share.owner_user_id);
+    // 下载文件内容（传人文件所有者的 user_id）
+    auto data = file_manager->download_file(file_info->id, file_info->user_id);
     if (!data)
     {
         return error_response(500, "Failed to download shared file");
@@ -597,16 +560,7 @@ HttpResponse HttpHandler::handle_file_search(const HttpRequest &request)
     return json_response(200, "Success", json_array);
 }
 
-// 生成分享码和下载分享文件的接口
-HttpResponse handle_share_create(const HttpRequest &request)
-{
-}
-
-// 通过分享码下载文件的接口
-HttpResponse handle_share_download(const HttpRequest &request)
-{
-    mysql_query("SELECT file_id, owner_user_id FROM shares WHERE share_code = '" + db->escape_string(code) + "'");
-}
+// 生成分享码和下载分享文件的接口被移除，功能已合并到 HttpHandler 成员函数中
 
 std::string HttpHandler::get_session_token(const HttpRequest &request)
 {

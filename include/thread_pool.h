@@ -13,7 +13,7 @@
 class ThreadPool
 {
 public:
-    explicit ThreadPool(size_t num_threads);
+    explicit ThreadPool(size_t num_threads, int max_queue_size = 100);
     ~ThreadPool();
 
     // 添加任务到线程池
@@ -35,7 +35,9 @@ private:
     std::condition_variable condition;
     // 线程池停止标志
     bool stop;
-    int max_queue_size = 1000; // 可选：限制任务队列的最大大小
+
+    // 最大任务队列容量
+    int max_queue_size;
 };
 
 template <class F>
@@ -44,21 +46,18 @@ void ThreadPool::enqueue(F &&f)
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
         if (stop)
-        {
-            // 如果线程池已经停止，抛出异常--throw
             throw std::runtime_error("enqueue on stopped ThreadPool");
+
+        // 检查队列是否已满负载
+        if (tasks.size() >= (size_t)max_queue_size)
+        {
+            // 如果队列已满，这里可以采取丢弃策略、抛出异常或阻塞
+            // 简单起见，这里抛出异常
+            throw std::runtime_error("ThreadPool queue is full");
         }
 
-        // 可选：限制任务队列的最大大小，防止内存过度使用
-        if (works.size() > max_queue_size)
-        {
-            // 可以选择丢弃超出限制的任务(最旧任务)，或者抛出异常，或者记录日志,或者阻塞等待等
-            throw std::runtime_error("Task queue overflow: too many tasks enqueued");
-        }
-        // forward--保证原有参数的类型和引用属性不变，完美转发
         tasks.emplace(std::forward<F>(f));
     }
-    // 通知一个工作线程有新任务
     condition.notify_one();
 }
 

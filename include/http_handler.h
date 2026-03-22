@@ -55,8 +55,6 @@ private:
     std::shared_ptr<UserManager> user_manager;
     std::shared_ptr<FileManager> file_manager;
     std::shared_ptr<SessionManager> session_manager;
-    std::map<std::string, ShareInfo> shares;
-    std::mutex share_mutex;
 
     HttpResponse handle_register(const HttpRequest &request);
     HttpResponse handle_login(const HttpRequest &request);
@@ -77,7 +75,6 @@ private:
     HttpResponse json_response(int code, const std::string &message,
                                const std::string &data = "");
     HttpResponse error_response(int code, const std::string &message);
-    std::string generate_share_code();
 };
 
 // 简单的HTTP请求解析器和响应构建器，支持基本的HTTP协议格式

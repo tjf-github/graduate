@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #endif
+#include <random>
 
 // 文件管理类实现
 // 构造函数接受数据库连接池和存储路径，确保存储目录存在
@@ -372,20 +373,78 @@ std::vector<FileInfo> FileManager::search_files(int user_id,
     return files;
 }
 
-// 形成分享码
-std::optional<std::vector<char>> create_download_shared_file(const std::string &code)
+// 生成并保存分享码
+std::string FileManager::create_share_code(int file_id, int user_id)
 {
-    // 这里应该实现生成分享码的逻辑，例如将文件信息和分享码存储在数据库中，并返回分享码对应的文件数据
-    // 由于这个功能比较复杂，涉及到安全性和权限控制等问题，这里暂时返回std::nullopt表示未实现
-    return std::nullopt;
+    std::string code = generate_random_share_code(8);
+    auto db = db_pool->get_connection();
+    if (!db)
+        return "";
+
+    std::string query =
+        "UPDATE files SET share_code = '" + db->escape_string(code) +
+        "' WHERE id = " + std::to_string(file_id) +
+        " AND user_id = " + std::to_string(user_id);
+
+    if (db->execute(query))
+    {
+        db_pool->return_connection(db);
+        return code;
+    }
+
+    db_pool->return_connection(db);
+    return "";
 }
 
 // 通过分享码下载文件
-std::optional<FileInfo> get_shared_file_info(const std::string &code)
+std::optional<FileInfo> FileManager::get_shared_file_info(const std::string &code)
 {
-    // 这里应该实现通过分享码获取文件信息的逻辑，例如从数据库中查询分享码对应的文件信息，并返回文件信息
-    // 由于这个功能比较复杂，涉及到安全性和权限控制等问题，这里暂时返回std::nullopt表示未实现
-    return std::nullopt;
+    // 从数据库连接池获取一个可用连接
+    auto db = db_pool->get_connection();
+    if (!db)
+        return std::nullopt;
+
+    // 根据分享码查询文件信息，查询条件是 share_code 字段等于 code 参数
+    // 返回文件的 id、user_id、filename、original_filename、file_path、file_size、mime_type 和 upload_date
+    std::string query =
+        "SELECT id, user_id, filename, original_filename, file_path, "
+        "file_size, mime_type, upload_date "
+        "FROM files WHERE share_code = '" +
+        db->escape_string(code) + "'";
+
+    // 执行 SQL 查询
+    MYSQL_RES *result = db->query(query);
+    if (!result)
+    {
+        db_pool->return_connection(db);
+        return std::nullopt;
+    }
+
+    // 从结果集中获取第一行数据，如果没有数据则表示该分享码无效或已失效
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row)
+    {
+        mysql_free_result(result);
+        db_pool->return_connection(db);
+        return std::nullopt;
+    }
+
+    // 将数据库查询结果映射到 FileInfo 结构体中
+    FileInfo info;
+    info.id = std::stoi(row[0]);
+    info.user_id = std::stoi(row[1]);
+    info.filename = row[2] ? row[2] : "";
+    info.original_filename = row[3] ? row[3] : "";
+    info.file_path = row[4] ? row[4] : "";
+    info.file_size = std::stoll(row[5] ? row[5] : "0");
+    info.mime_type = row[6] ? row[6] : "";
+    info.upload_date = row[7] ? row[7] : "";
+
+    // 释放 MySQL 结果集并归还数据库连接到连接池
+    mysql_free_result(result);
+    db_pool->return_connection(db);
+
+    return info;
 }
 
 // 获取存储统计，返回用户已使用的存储空间总大小和文件数量，如果用户没有文件则返回0
@@ -394,11 +453,12 @@ long long FileManager::get_user_storage_used(int user_id)
     auto db = db_pool->get_connection();
     if (!db)
         return 0;
-
+    // 使用分享码查询文件信息，查询条件是share_code字段等于code参数，返回文件的id、user_id、filename、original_filename、file_path、file_size、mime_type和upload_date，如果没有找到匹配的记录则返回std::nullopt
     std::string query =
         "SELECT SUM(file_size) FROM files WHERE user_id = " +
         std::to_string(user_id);
 
+    // 执行SQL查询，如果执行失败则返回0
     MYSQL_RES *result = db->query(query);
     if (!result)
     {
@@ -406,6 +466,7 @@ long long FileManager::get_user_storage_used(int user_id)
         return 0;
     }
 
+    // 从结果集中获取第一行数据，如果没有数据则表示用户没有文件，返回0
     MYSQL_ROW row = mysql_fetch_row(result);
     long long total = 0;
     if (row && row[0])
@@ -413,6 +474,7 @@ long long FileManager::get_user_storage_used(int user_id)
         total = std::stoll(row[0]);
     }
 
+    //
     mysql_free_result(result);
     db_pool->return_connection(db);
 
@@ -448,4 +510,22 @@ int FileManager::get_user_file_count(int user_id)
     db_pool->return_connection(db);
 
     return count;
+}
+
+std::string FileManager::generate_random_share_code(int length)
+{
+    const std::string charset =
+        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+    // 使用 C++11 的随机数引擎
+    std::random_device rd;  // 用于获取随机数种子
+    std::mt19937 gen(rd()); // 标准 mersenne_twister_engine
+    std::uniform_int_distribution<> dis(0, charset.length() - 1);
+
+    std::string code;
+    for (int i = 0; i < length; ++i)
+    {
+        code += charset[dis(gen)];
+    }
+    return code;
 }

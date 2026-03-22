@@ -67,20 +67,24 @@ public:
                                        const std::string &keyword);
 
     // 形成分享码
-    std::optional<std::vector<char>> create_download_shared_file(const std::string &code);
+    std::string create_share_code(int file_id, int user_id);
 
-    // 通过分享码下载文件
+    // 通过分享码获取文件信息
     std::optional<FileInfo> get_shared_file_info(const std::string &code);
 
     //  获取存储统计
     long long get_user_storage_used(int user_id);
     int get_user_file_count(int user_id);
 
+    std::string generate_random_share_code(int length = 8);
+
 private:
     // 数据库连接池
     std::shared_ptr<DBConnectionPool> db_pool;
     // 文件存储路径
     std::string storage_path;
+    // 一个string作为分享码，生成分享码的逻辑可以是随机生成一个唯一的字符串，并将其与文件信息关联存储在数据库中，以便通过分享码查询文件信息和数据
+    std::string code;
 
     // 生成唯一文件名
     std::string generate_unique_filename(const std::string &original_filename);
