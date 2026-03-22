@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <mutex>
 #include "user_manager.h"
 #include "file_manager.h"
 #include "session_manager.h"
@@ -43,6 +44,14 @@ public:
     HttpResponse handle_request(const HttpRequest &request);
 
 private:
+    struct ShareInfo
+    {
+        std::string share_code;
+        int owner_user_id;
+        int file_id;
+        std::string created_at;
+    };
+
     std::shared_ptr<UserManager> user_manager;
     std::shared_ptr<FileManager> file_manager;
     std::shared_ptr<SessionManager> session_manager;

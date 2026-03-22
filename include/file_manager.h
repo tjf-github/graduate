@@ -20,19 +20,12 @@ struct FileInfo
     std::string upload_date;
 };
 
-struct ShareLinkInfo
+struct ShareInfo
 {
-    int id;
-    int file_id;
-    int user_id;
     std::string share_code;
-    std::string expire_date;
-    int access_count;
+    int owner_user_id;
+    int file_id;
     std::string created_at;
-    std::string original_filename;
-    std::string file_path;
-    std::string mime_type;
-    long long file_size;
 };
 
 // 文件管理类，需要对mysql和路径（有了路径就知道文件）进行封装，提供文件上传、下载、删除、重命名、搜索等功能
@@ -73,27 +66,30 @@ public:
     std::vector<FileInfo> search_files(int user_id,
                                        const std::string &keyword);
 
-    // 获取存储统计
+    // 形成分享码
+    std::string create_share_code(int file_id, int user_id);
+
+    // 通过分享码获取文件信息
+    std::optional<FileInfo> get_shared_file_info(const std::string &code);
+
+    //  获取存储统计
     long long get_user_storage_used(int user_id);
     int get_user_file_count(int user_id);
 
-    // 分享链接
-    std::optional<ShareLinkInfo> create_share_link(int file_id, int user_id,
-                                                   const std::string &share_code,
-                                                   const std::string &expire_date = "");
-    std::optional<ShareLinkInfo> get_share_by_code(const std::string &share_code);
-    bool increment_share_access_count(const std::string &share_code);
+    std::string generate_random_share_code(int length = 8);
 
 private:
     // 数据库连接池
     std::shared_ptr<DBConnectionPool> db_pool;
     // 文件存储路径
     std::string storage_path;
+    // 一个string作为分享码，生成分享码的逻辑可以是随机生成一个唯一的字符串，并将其与文件信息关联存储在数据库中，以便通过分享码查询文件信息和数据
+    std::string code;
 
     // 生成唯一文件名
     std::string generate_unique_filename(const std::string &original_filename);
 
-    // 构建完整文件路径
+    // 构建完整文件路径，例如/storage/12345/unique_filename.ext
     std::string get_full_path(int user_id, const std::string &filename);
 
     // 创建用户目录

@@ -363,14 +363,9 @@ Content-Type: application/json
 请求体:
 ```json
 {
-  "file_id": 1,
-  "expire_hours": 24
+  "file_id": 1
 }
 ```
-
-说明:
-- `expire_hours` 默认推荐 `24`
-- `expire_hours <= 0` 表示永久有效（演示可用，生产不推荐）
 
 ### 13. 通过分享链接下载
 **GET** `/api/share/download?code={share_code}`

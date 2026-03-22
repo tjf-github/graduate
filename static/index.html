@@ -309,17 +309,11 @@
         }
 
         async function createShare(fileId) {
-            const input = prompt('请输入分享有效期（小时），默认 24，小于等于 0 表示永久有效：', '24');
-            if (input === null) return;
-            const expireHours = Number.parseInt(input, 10);
             try {
                 const res = await fetch(`${API_BASE}/share/create`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        file_id: fileId,
-                        expire_hours: Number.isFinite(expireHours) ? expireHours : 24
-                    })
+                    body: JSON.stringify({ file_id: fileId })
                 });
 
                 if (!res.ok) {
@@ -331,19 +325,11 @@
                 const data = await res.json();
                 if (data.code === 200 && data.data) {
                     const fullUrl = `${window.location.origin}${data.data.share_url}`;
-                    let copyMessage = '分享链接已生成';
-                    if (navigator.clipboard && window.isSecureContext) {
-                        await navigator.clipboard.writeText(fullUrl);
-                        copyMessage = '分享链接已复制';
-                    }
-                    const expireTip = data.data.expire_date ? `，有效期至 ${data.data.expire_date}` : '，当前为永久分享';
-                    showMsg(`${copyMessage}${expireTip}`);
+                    await navigator.clipboard.writeText(fullUrl);
+                    showMsg('分享链接已复制');
                     document.getElementById('share-link-input').value = fullUrl;
                 } else showMsg(data.message || '分享失败', true);
-            } catch (error) {
-                console.error('分享创建失败', error);
-                showMsg('分享失败，请检查登录状态或浏览器剪贴板权限', true);
-            }
+            } catch (_) { showMsg('分享失败', true); }
         }
 
         async function downloadByShareLink() {

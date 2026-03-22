@@ -8,14 +8,15 @@
 #include <chrono>
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
+// #include <winsock2.h>
+// #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 #include <io.h>
 #define close closesocket
 #define usleep(x) Sleep((x) / 1000)
 #else
 #include <unistd.h>
+#include <sys/types.h>
 // socket相关头文件
 #include <sys/socket.h>
 // 网络地址结构体
@@ -52,6 +53,7 @@ CloudDiskServer::~CloudDiskServer()
 
 bool CloudDiskServer::create_socket()
 {
+    // tcpsocket，AF_INET--IPv4，SOCK_STREAM--TCP
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1)
     {
@@ -71,8 +73,12 @@ bool CloudDiskServer::create_socket()
 
     // 绑定地址
     struct sockaddr_in address;
+    // memset--将sin_zero字段填充为0，确保结构体的正确性和兼容性
+    memset(address.sin_zero, '\0', sizeof(address.sin_zero));
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+    // INADDR_ANY--绑定到所有可用接口，允许从任何IP地址连接
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    // htons--主机字节序转网络字节序，确保跨平台兼容
     address.sin_port = htons(port);
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
@@ -134,6 +140,7 @@ void CloudDiskServer::handle_client(int client_fd)
     std::string request_data;
     ssize_t bytes_read;
 
+    // 读取cilent请求数据，直到读取完整的HTTP请求头和可能的请求体
     while ((bytes_read = read(client_fd, buffer, BUFFER_SIZE)) > 0)
     {
         request_data.append(buffer, bytes_read);

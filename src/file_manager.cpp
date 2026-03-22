@@ -5,9 +5,9 @@
 
 #ifdef _WIN32
 // Windows平台使用CoCreateGuid生成UUID，并使用direct.h来创建目录
-#include <direct.h>
+// #include <direct.h>
 // Windows平台使用objbase.h来生成UUID，并使用iomanip来格式化UUID字符串
-#include <objbase.h>
+// #include <objbase.h>
 #include <iomanip>
 // Windows implementation of uuid/uuid.h functionality using CoCreateGuid
 #define mkdir(path, mode) _mkdir(path)
@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #endif
+#include <random>
 
 // 文件管理类实现
 // 构造函数接受数据库连接池和存储路径，确保存储目录存在
@@ -85,9 +86,11 @@ bool FileManager::create_user_directory(int user_id)
     return mkdir(user_dir.c_str(), 0755) == 0 || errno == EEXIST;
 }
 
+// 文件上传，返回文件信息，如果上传失败则返回std::nullopt
 // optional类是C++17引入的一个模板类，用于表示一个值可能存在也可能不存在的情况。它提供了一种安全的方式来处理可能为空的值，避免了使用裸指针或特殊值（如nullptr）来表示缺失数据的风险。
 std::optional<FileInfo> FileManager::upload_file(int user_id,
                                                  const std::string &original_filename,
+                                                 // mime_type是文件的MIME类型，例如"image/png"、"application/pdf"等，用于描述文件的格式和类型
                                                  const std::string &mime_type,
                                                  const char *data,
                                                  size_t size)
@@ -176,6 +179,7 @@ std::optional<std::vector<char>> FileManager::download_file(int file_id, int use
         return std::nullopt;
     }
 
+    // 将文件内容读取到一个vector<char>中，大小为file_info->file_size
     std::vector<char> data(file_info->file_size);
     file.read(data.data(), file_info->file_size);
     file.close();
@@ -183,7 +187,7 @@ std::optional<std::vector<char>> FileManager::download_file(int file_id, int use
     return data;
 }
 
-// 获取文件信息，如果文件不存在或用户没有权限访问则返回std::nullopt
+// 从mysql获取文件信息，如果文件不存在或用户没有权限访问则返回std::nullopt
 std::optional<FileInfo> FileManager::get_file_info(int file_id, int user_id)
 {
     auto db = db_pool->get_connection();
@@ -204,6 +208,7 @@ std::optional<FileInfo> FileManager::get_file_info(int file_id, int user_id)
         return std::nullopt;
     }
 
+    // 从结果集中获取第一行数据，如果没有数据则表示文件不存在或用户没有权限访问，返回std::nullopt
     MYSQL_ROW row = mysql_fetch_row(result);
     if (!row)
     {
@@ -368,17 +373,92 @@ std::vector<FileInfo> FileManager::search_files(int user_id,
     return files;
 }
 
+// 生成并保存分享码
+std::string FileManager::create_share_code(int file_id, int user_id)
+{
+    std::string code = generate_random_share_code(8);
+    auto db = db_pool->get_connection();
+    if (!db)
+        return "";
+
+    std::string query =
+        "UPDATE files SET share_code = '" + db->escape_string(code) +
+        "' WHERE id = " + std::to_string(file_id) +
+        " AND user_id = " + std::to_string(user_id);
+
+    if (db->execute(query))
+    {
+        db_pool->return_connection(db);
+        return code;
+    }
+
+    db_pool->return_connection(db);
+    return "";
+}
+
+// 通过分享码下载文件
+std::optional<FileInfo> FileManager::get_shared_file_info(const std::string &code)
+{
+    // 从数据库连接池获取一个可用连接
+    auto db = db_pool->get_connection();
+    if (!db)
+        return std::nullopt;
+
+    // 根据分享码查询文件信息，查询条件是 share_code 字段等于 code 参数
+    // 返回文件的 id、user_id、filename、original_filename、file_path、file_size、mime_type 和 upload_date
+    std::string query =
+        "SELECT id, user_id, filename, original_filename, file_path, "
+        "file_size, mime_type, upload_date "
+        "FROM files WHERE share_code = '" +
+        db->escape_string(code) + "'";
+
+    // 执行 SQL 查询
+    MYSQL_RES *result = db->query(query);
+    if (!result)
+    {
+        db_pool->return_connection(db);
+        return std::nullopt;
+    }
+
+    // 从结果集中获取第一行数据，如果没有数据则表示该分享码无效或已失效
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row)
+    {
+        mysql_free_result(result);
+        db_pool->return_connection(db);
+        return std::nullopt;
+    }
+
+    // 将数据库查询结果映射到 FileInfo 结构体中
+    FileInfo info;
+    info.id = std::stoi(row[0]);
+    info.user_id = std::stoi(row[1]);
+    info.filename = row[2] ? row[2] : "";
+    info.original_filename = row[3] ? row[3] : "";
+    info.file_path = row[4] ? row[4] : "";
+    info.file_size = std::stoll(row[5] ? row[5] : "0");
+    info.mime_type = row[6] ? row[6] : "";
+    info.upload_date = row[7] ? row[7] : "";
+
+    // 释放 MySQL 结果集并归还数据库连接到连接池
+    mysql_free_result(result);
+    db_pool->return_connection(db);
+
+    return info;
+}
+
 // 获取存储统计，返回用户已使用的存储空间总大小和文件数量，如果用户没有文件则返回0
 long long FileManager::get_user_storage_used(int user_id)
 {
     auto db = db_pool->get_connection();
     if (!db)
         return 0;
-
+    // 使用分享码查询文件信息，查询条件是share_code字段等于code参数，返回文件的id、user_id、filename、original_filename、file_path、file_size、mime_type和upload_date，如果没有找到匹配的记录则返回std::nullopt
     std::string query =
         "SELECT SUM(file_size) FROM files WHERE user_id = " +
         std::to_string(user_id);
 
+    // 执行SQL查询，如果执行失败则返回0
     MYSQL_RES *result = db->query(query);
     if (!result)
     {
@@ -386,6 +466,7 @@ long long FileManager::get_user_storage_used(int user_id)
         return 0;
     }
 
+    // 从结果集中获取第一行数据，如果没有数据则表示用户没有文件，返回0
     MYSQL_ROW row = mysql_fetch_row(result);
     long long total = 0;
     if (row && row[0])
@@ -393,6 +474,7 @@ long long FileManager::get_user_storage_used(int user_id)
         total = std::stoll(row[0]);
     }
 
+    //
     mysql_free_result(result);
     db_pool->return_connection(db);
 
@@ -430,122 +512,20 @@ int FileManager::get_user_file_count(int user_id)
     return count;
 }
 
-std::optional<ShareLinkInfo> FileManager::create_share_link(int file_id, int user_id,
-                                                            const std::string &share_code,
-                                                            const std::string &expire_date)
+std::string FileManager::generate_random_share_code(int length)
 {
-    auto file_info = get_file_info(file_id, user_id);
-    if (!file_info)
+    const std::string charset =
+        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+    // 使用 C++11 的随机数引擎
+    std::random_device rd;  // 用于获取随机数种子
+    std::mt19937 gen(rd()); // 标准 mersenne_twister_engine
+    std::uniform_int_distribution<> dis(0, charset.length() - 1);
+
+    std::string code;
+    for (int i = 0; i < length; ++i)
     {
-        return std::nullopt;
+        code += charset[dis(gen)];
     }
-
-    auto db = db_pool->get_connection();
-    if (!db)
-    {
-        return std::nullopt;
-    }
-
-    std::string expire_value = "NULL";
-    if (!expire_date.empty())
-    {
-        expire_value = "'" + db->escape_string(expire_date) + "'";
-    }
-
-    std::string query =
-        "INSERT INTO share_links (file_id, user_id, share_code, expire_date) VALUES (" +
-        std::to_string(file_id) + ", " +
-        std::to_string(user_id) + ", '" +
-        db->escape_string(share_code) + "', " +
-        expire_value + ")";
-
-    if (!db->execute(query))
-    {
-        db_pool->return_connection(db);
-        return std::nullopt;
-    }
-
-    int share_id = static_cast<int>(db->last_insert_id());
-    db_pool->return_connection(db);
-
-    ShareLinkInfo share;
-    share.id = share_id;
-    share.file_id = file_id;
-    share.user_id = user_id;
-    share.share_code = share_code;
-    share.expire_date = expire_date;
-    share.access_count = 0;
-    share.original_filename = file_info->original_filename;
-    share.file_path = file_info->file_path;
-    share.mime_type = file_info->mime_type;
-    share.file_size = file_info->file_size;
-    return share;
-}
-
-std::optional<ShareLinkInfo> FileManager::get_share_by_code(const std::string &share_code)
-{
-    auto db = db_pool->get_connection();
-    if (!db)
-    {
-        return std::nullopt;
-    }
-
-    std::string query =
-        "SELECT s.id, s.file_id, s.user_id, s.share_code, "
-        "COALESCE(DATE_FORMAT(s.expire_date, '%Y-%m-%d %H:%i:%s'), ''), "
-        "s.access_count, DATE_FORMAT(s.created_at, '%Y-%m-%d %H:%i:%s'), "
-        "f.original_filename, f.file_path, f.mime_type, f.file_size "
-        "FROM share_links s "
-        "JOIN files f ON s.file_id = f.id "
-        "WHERE s.share_code = '" + db->escape_string(share_code) + "' "
-        "AND (s.expire_date IS NULL OR s.expire_date > NOW())";
-
-    MYSQL_RES *result = db->query(query);
-    if (!result)
-    {
-        db_pool->return_connection(db);
-        return std::nullopt;
-    }
-
-    MYSQL_ROW row = mysql_fetch_row(result);
-    if (!row)
-    {
-        mysql_free_result(result);
-        db_pool->return_connection(db);
-        return std::nullopt;
-    }
-
-    ShareLinkInfo share;
-    share.id = std::stoi(row[0]);
-    share.file_id = std::stoi(row[1]);
-    share.user_id = std::stoi(row[2]);
-    share.share_code = row[3] ? row[3] : "";
-    share.expire_date = row[4] ? row[4] : "";
-    share.access_count = std::stoi(row[5] ? row[5] : "0");
-    share.created_at = row[6] ? row[6] : "";
-    share.original_filename = row[7] ? row[7] : "";
-    share.file_path = row[8] ? row[8] : "";
-    share.mime_type = row[9] ? row[9] : "";
-    share.file_size = std::stoll(row[10] ? row[10] : "0");
-
-    mysql_free_result(result);
-    db_pool->return_connection(db);
-    return share;
-}
-
-bool FileManager::increment_share_access_count(const std::string &share_code)
-{
-    auto db = db_pool->get_connection();
-    if (!db)
-    {
-        return false;
-    }
-
-    std::string query =
-        "UPDATE share_links SET access_count = access_count + 1 "
-        "WHERE share_code = '" + db->escape_string(share_code) + "'";
-
-    bool success = db->execute(query);
-    db_pool->return_connection(db);
-    return success;
+    return code;
 }

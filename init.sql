@@ -30,7 +30,11 @@ CREATE TABLE IF NOT EXISTS files (
     mime_type VARCHAR(100),
     upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    --分享码
+    share_code VARCHAR(32) UNIQUE,
+    --外键约束，用户删除时级联删除文件
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    --索引优化查询性能
     INDEX idx_user_id (user_id),
     INDEX idx_filename (original_filename),
     INDEX idx_upload_date (upload_date)

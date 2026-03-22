@@ -6,9 +6,11 @@
 Database::Database(const DBConfig &cfg)
     : conn(nullptr), config(cfg), connected(false)
 {
+    // 初始化MySQL连接对象
     conn = mysql_init(nullptr);
     if (!conn)
     {
+        // 抛出异常，表示MySQL初始化失败
         throw std::runtime_error("MySQL initialization failed");
     }
 }
