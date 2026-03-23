@@ -4,6 +4,7 @@
 #include <fstream>
 #include <random>
 #include <chrono>
+#include <iomanip>
 #include "json_helper.h"
 #include "logger.h"
 
@@ -32,6 +33,20 @@ std::string url_decode(const std::string &str)
         }
     }
     return res;
+}
+
+static std::string url_encode_utf8(const std::string &str)
+{
+    std::ostringstream encoded;
+    for (unsigned char c : str)
+    {
+        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+            encoded << c;
+        else
+            encoded << '%' << std::uppercase << std::hex << std::setw(2)
+                    << std::setfill('0') << (int)c;
+    }
+    return encoded.str();
 }
 
 // ---------------------------------------------------------
@@ -131,17 +146,44 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
     return error_response(404, "Not Found");
 }
 
-// 构建JSON格式的响应体，包含状态码、消息和可选的数据字段
+// 构建JSON响应，code是状态码，message是提示信息，data是可选的响应数据（已经是JSON格式字符串）
 HttpResponse HttpHandler::json_response(int code, const std::string &message, const std::string &data)
 {
     HttpResponse response;
+    response.status_code = code;
+
+    // 补上 status_text
+    switch (code)
+    {
+    case 200:
+        response.status_text = "OK";
+        break;
+    case 400:
+        response.status_text = "Bad Request";
+        break;
+    case 401:
+        response.status_text = "Unauthorized";
+        break;
+    case 403:
+        response.status_text = "Forbidden";
+        break;
+    case 404:
+        response.status_text = "Not Found";
+        break;
+    case 500:
+        response.status_text = "Internal Server Error";
+        break;
+    default:
+        response.status_text = "Unknown";
+        break;
+    }
+
     std::ostringstream ss;
     ss << "{\"code\":" << code << ",\"message\":\"" << message << "\"";
     if (!data.empty())
         ss << ",\"data\":" << data;
     ss << "}";
     response.body = ss.str();
-    response.status_code = code;
     return response;
 }
 
@@ -396,6 +438,7 @@ HttpResponse HttpHandler::handle_share_create(const HttpRequest &request)
     return json_response(200, "Share created", builder.build());
 }
 
+// 通过分享码下载文件的接口，前端访问 /api/share/download?code=xxxx 来下载文件
 HttpResponse HttpHandler::handle_share_download(const HttpRequest &request)
 {
     std::string code;
@@ -427,7 +470,7 @@ HttpResponse HttpHandler::handle_share_download(const HttpRequest &request)
     response.status_code = 200;
     response.status_text = "OK";
     response.headers["Content-Type"] = "application/octet-stream";
-    response.headers["Content-Disposition"] = "attachment; filename=\"" + file_info->original_filename + "\"";
+    response.headers["Content-Disposition"] = "attachment; filename=\"" + file_info->original_filename + "\"; filename*=UTF-8''" + url_encode_utf8(file_info->original_filename);
     response.body = std::string(data->begin(), data->end());
     return response;
 }
@@ -479,7 +522,7 @@ HttpResponse HttpHandler::handle_file_download(const HttpRequest &request)
         response.status_code = 200;
         response.status_text = "OK";
         response.headers["Content-Type"] = "application/octet-stream";
-        response.headers["Content-Disposition"] = "attachment; filename=\"" + file_info->original_filename + "\"";
+        response.headers["Content-Disposition"] = "attachment; filename=\"" + file_info->original_filename + "\"; filename*=UTF-8''" + url_encode_utf8(file_info->original_filename);
         response.body = std::string(data->begin(), data->end());
         return response;
     }

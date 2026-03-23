@@ -56,7 +56,7 @@ bool UserManager::register_user(const std::string &username,
         int rows = mysql_num_rows(result);
         LOG_DEBUG("Check Rows: " + std::to_string(rows));
         mysql_free_result(result);
-        db_pool->return_connection(db);
+        // db_pool->return_connection(db);
 
         if (rows > 0)
         {

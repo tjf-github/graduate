@@ -80,6 +80,7 @@ public:
     void return_connection(std::shared_ptr<Database> conn);
 
 private:
+    // 连接池中的数据库连接列表
     std::vector<std::shared_ptr<Database>> connections;
     std::vector<bool> available;
     DBConfig config;

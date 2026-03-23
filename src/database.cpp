@@ -200,7 +200,9 @@ DBConnectionPool::DBConnectionPool(const DBConfig &cfg, size_t pool_size)
 // 析构函数，清理连接池中的连接
 DBConnectionPool::~DBConnectionPool()
 {
-    connections.clear();
+    // connections.clear();
+    if (conn_)
+        pool_->return_connection(conn_); // 析构时自动归还
 }
 
 // 获取一个可用的数据库连接，如果没有可用连接则等待
