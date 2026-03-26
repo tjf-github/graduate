@@ -200,9 +200,8 @@ DBConnectionPool::DBConnectionPool(const DBConfig &cfg, size_t pool_size)
 // 析构函数，清理连接池中的连接
 DBConnectionPool::~DBConnectionPool()
 {
-    // connections.clear();
-    if (conn_)
-        pool_->return_connection(conn_); // 析构时自动归还
+    connections.clear();
+    available.clear();
 }
 
 // 获取一个可用的数据库连接，如果没有可用连接则等待
@@ -210,6 +209,7 @@ std::shared_ptr<Database> DBConnectionPool::get_connection()
 {
     std::unique_lock<std::mutex> lock(pool_mutex);
 
+    // 继承的条件变量等待，直到有可用连接
     cv.wait(lock, [this]
             {
         for(size_t i = 0; i < available.size(); ++i) {
@@ -222,7 +222,18 @@ std::shared_ptr<Database> DBConnectionPool::get_connection()
         if (available[i])
         {
             available[i] = false;
-            return connections[i];
+            auto conn = connections[i];
+            std::weak_ptr<DBConnectionPool> weak_pool = shared_from_this();
+
+            // 返回带自定义deleter的句柄：作用域结束时自动归还连接到池
+            return std::shared_ptr<Database>(conn.get(),
+                                             [weak_pool, conn](Database *) mutable
+                                             {
+                                                 if (auto pool = weak_pool.lock())
+                                                 {
+                                                     pool->return_connection(conn);
+                                                 }
+                                             });
         }
     }
 
@@ -238,8 +249,12 @@ void DBConnectionPool::return_connection(std::shared_ptr<Database> conn)
     {
         if (connections[i] == conn)
         {
-            available[i] = true;
-            cv.notify_one();
+            // 幂等归还：避免手动归还与自动归还同时存在时重复唤醒
+            if (!available[i])
+            {
+                available[i] = true;
+                cv.notify_one();
+            }
             break;
         }
     }

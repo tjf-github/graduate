@@ -8,6 +8,7 @@
 #include "json_helper.h"
 #include "logger.h"
 
+// 通过分享码下载文件时解决中文文件名乱码问题的关键函数：URL编码和解码
 std::string url_decode(const std::string &str)
 {
     std::string res;
@@ -35,6 +36,7 @@ std::string url_decode(const std::string &str)
     return res;
 }
 
+// URL编码函数，用于生成 Content-Disposition 中的 filename* 参数，确保中文文件名在下载时正确显示
 static std::string url_encode_utf8(const std::string &str)
 {
     std::ostringstream encoded;

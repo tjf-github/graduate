@@ -4,7 +4,7 @@
 #include <sstream>
 #include <ctime>
 
-// 获取日志单例实例
+// 获取日志单例实例，全局唯一
 Logger &Logger::getInstance()
 {
     // C++11 起，局部静态变量的初始化是线程安全的

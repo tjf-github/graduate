@@ -70,7 +70,7 @@ private:
 };
 
 // 数据库连接池
-class DBConnectionPool
+class DBConnectionPool : public std::enable_shared_from_this<DBConnectionPool>
 {
 public:
     explicit DBConnectionPool(const DBConfig &config, size_t pool_size = 10);

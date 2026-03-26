@@ -16,6 +16,7 @@ struct FileInfo
     std::string original_filename;
     std::string file_path;
     long long file_size;
+    // MIME类型，例如"image/png"、"application/pdf"等，用于描述文件的格式和类型
     std::string mime_type;
     std::string upload_date;
 };

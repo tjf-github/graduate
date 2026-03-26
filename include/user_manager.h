@@ -12,9 +12,15 @@ struct User
     std::string username;
     std::string email;
     std::string password_hash;
+    // 用户存储空间使用情况，单位为字节
     long long storage_used;
+    // 用户存储空间限制，单位为字节
     long long storage_limit;
     std::string created_at;
+    // 发送和获取消息
+    // std::string message;
+    // int sender_id;
+    // int receiver_id;
 };
 
 class UserManager
@@ -52,6 +58,7 @@ private:
 
     // 密码哈希
     std::string hash_password(const std::string &password);
+    // 验证密码
     bool verify_password(const std::string &password,
                          const std::string &hash);
 };

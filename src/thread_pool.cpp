@@ -48,6 +48,7 @@ ThreadPool::~ThreadPool()
     {
         if (worker.joinable())
         {
+            // 等待工作线程完成当前任务并退出，确保资源正确释放
             worker.join();
         }
     }

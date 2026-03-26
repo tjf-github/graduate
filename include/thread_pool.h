@@ -58,6 +58,7 @@ void ThreadPool::enqueue(F &&f)
 
         tasks.emplace(std::forward<F>(f));
     }
+    // 通知一个工作线程有新任务可执行
     condition.notify_one();
 }
 

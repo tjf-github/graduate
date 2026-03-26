@@ -11,6 +11,7 @@
 UserManager::UserManager(std::shared_ptr<DBConnectionPool> pool)
     : db_pool(pool) {}
 
+// 初级hash，未加盐
 std::string UserManager::hash_password(const std::string &password)
 {
     unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -84,6 +85,7 @@ bool UserManager::register_user(const std::string &username,
     return success;
 }
 
+// 用户登录
 std::optional<User> UserManager::login(const std::string &username,
                                        const std::string &password)
 {
@@ -195,6 +197,7 @@ std::optional<User> UserManager::get_user_by_username(const std::string &usernam
         return std::nullopt;
     }
 
+    // 通过看看是否有行来判断用户是否存在，如果没有行则返回nullopt
     MYSQL_ROW row = mysql_fetch_row(result);
     if (!row)
     {
