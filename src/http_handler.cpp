@@ -619,7 +619,10 @@ HttpResponse HttpHandler::handle_file_search(const HttpRequest &request)
             json_array += ",";
         JsonBuilder builder;
         builder.add("id", files[i].id);
-        builder.add("filename", files[i].original_filename);
+        builder.add("filename", files[i].filename);
+        builder.add("original_filename", files[i].original_filename);
+        builder.add("size", files[i].file_size);
+        builder.add("upload_date", files[i].upload_date);
         json_array += builder.build();
     }
     json_array += "]";

@@ -270,6 +270,81 @@
             text-align: center;
             padding: 40px 10px;
         }
+
+        .mt-10 {
+            margin-top: 10px;
+        }
+
+        .flex-row {
+            display: flex;
+        }
+
+        .gap-10 {
+            gap: 10px;
+        }
+
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+
+        .flex-1 {
+            flex: 1;
+        }
+
+        .btn-auto {
+            width: auto;
+        }
+
+        .btn-gray {
+            background-color: #6c757d;
+        }
+
+        .btn-green {
+            background-color: #28a745;
+        }
+
+        .btn-teal {
+            background-color: #17a2b8;
+        }
+
+        .btn-purple {
+            background-color: #6f42c1;
+        }
+
+        .btn-orange {
+            background-color: #fd7e14;
+        }
+
+        .btn-red {
+            background-color: #dc3545;
+        }
+
+        .btn-pad-x {
+            padding: 0 20px;
+        }
+
+        .btn-action {
+            width: auto;
+            padding: 5px 10px;
+        }
+
+        .btn-inline-spaced {
+            margin-left: 6px;
+        }
+
+        .btn-send {
+            width: 140px;
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .table-empty {
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -318,12 +393,12 @@
                 <div class="profile-actions">
                     <button class="small-btn" onclick="toggleProfileEditor(true)">修改用户名/邮箱</button>
                 </div>
-                <div id="profile-editor" class="hidden" style="margin-top:10px;">
-                    <div style="display:flex; gap:10px;">
+                <div id="profile-editor" class="hidden mt-10">
+                    <div class="flex-row gap-10">
                         <input id="edit-username" type="text" placeholder="新用户名">
                         <input id="edit-email" type="email" placeholder="新邮箱">
                         <button class="small-btn" onclick="submitProfileUpdate()">保存</button>
-                        <button class="small-btn" style="background:#6c757d"
+                        <button class="small-btn btn-gray"
                             onclick="toggleProfileEditor(false)">取消</button>
                     </div>
                 </div>
@@ -332,19 +407,19 @@
 
         <div class="inline-share">
             <input id="share-link-input" type="text" placeholder="粘贴分享链接，例如 /api/share/download?code=XXXX">
-            <button onclick="downloadByShareLink()" style="width:auto;">下载分享文件</button>
+            <button class="btn-auto" onclick="downloadByShareLink()">下载分享文件</button>
         </div>
 
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <input type="file" id="file-selector" style="flex:1;">
-            <button onclick="handleUpload()" style="width:auto; padding:0 20px;">上传文件</button>
-            <button onclick="loadFileList()" style="width:auto; background-color:#28a745;">刷新</button>
+        <div class="flex-row gap-10 mb-20">
+            <input type="file" id="file-selector" class="flex-1">
+            <button class="btn-auto btn-pad-x" onclick="handleUpload()">上传文件</button>
+            <button class="btn-auto btn-green" onclick="loadFileList()">刷新</button>
         </div>
 
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <input id="file-search-input" type="text" placeholder="按文件名搜索，例如 report 或 .pdf" style="flex:1;">
-            <button onclick="searchFiles()" style="width:auto; background-color:#17a2b8;">搜索</button>
-            <button onclick="resetFileSearch()" style="width:auto; background-color:#6c757d;">清空搜索</button>
+        <div class="flex-row gap-10 mb-20">
+            <input id="file-search-input" type="text" placeholder="按文件名搜索，例如 report 或 .pdf" class="flex-1">
+            <button class="btn-auto btn-teal" onclick="searchFiles()">搜索</button>
+            <button class="btn-auto btn-gray" onclick="resetFileSearch()">清空搜索</button>
         </div>
 
         <table>
@@ -358,7 +433,7 @@
             </thead>
             <tbody id="file-table-body">
                 <tr>
-                    <td colspan="4" style="text-align:center;">正在加载文件列表...</td>
+                    <td colspan="4" class="table-empty">正在加载文件列表...</td>
                 </tr>
             </tbody>
         </table>
@@ -367,16 +442,16 @@
             <h2>站内消息</h2>
             <div class="message-toolbar">
                 <input id="chat-user-id" type="number" min="1" placeholder="输入对方用户 ID">
-                <button onclick="selectChatUser()" style="width:auto;">进入会话</button>
-                <button onclick="loadMessages(true)" style="width:auto; background-color:#28a745;">刷新消息</button>
+                <button class="btn-auto" onclick="selectChatUser()">进入会话</button>
+                <button class="btn-auto btn-green" onclick="loadMessages(true)">刷新消息</button>
             </div>
-            <div id="message-status" style="font-size:13px; color:#6c757d; margin-bottom:10px;">请选择一个用户开始聊天</div>
+            <div id="message-status" class="status-text">请选择一个用户开始聊天</div>
             <div id="message-list" class="message-list">
                 <div class="message-empty">暂无会话内容</div>
             </div>
             <div class="message-compose">
                 <textarea id="message-input" placeholder="输入消息内容，支持短轮询演示"></textarea>
-                <button onclick="sendMessage()" style="width:140px;">发送消息</button>
+                <button class="btn-send" onclick="sendMessage()">发送消息</button>
             </div>
         </div>
     </div>
@@ -412,12 +487,33 @@
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('disk-section').classList.remove('hidden');
         }
+        function showAuthSection() {
+            document.getElementById('disk-section').classList.add('hidden');
+            document.getElementById('auth-section').classList.remove('hidden');
+        }
         function showMsg(text, isError = false) {
             const el = document.getElementById('message');
             el.textContent = text;
             el.className = `notify ${isError ? 'error' : 'success'}`;
             el.classList.remove('hidden');
             setTimeout(() => el.classList.add('hidden'), 3000);
+        }
+        function clearAuthState() {
+            stopMessagePolling();
+            currentToken = '';
+            currentUser = '';
+            currentUserId = 0;
+            activeChatUserId = 0;
+            localStorage.removeItem('cloudisk_token');
+            localStorage.removeItem('cloudisk_user');
+            localStorage.removeItem('cloudisk_user_id');
+            localStorage.removeItem('cloudisk_chat_user_id');
+        }
+        function handleUnauthorized(message = '登录已失效，请重新登录') {
+            clearAuthState();
+            showAuthSection();
+            toggleAuth(true);
+            showMsg(message, true);
         }
         function formatBytes(bytes) {
             if (!Number.isFinite(bytes) || bytes < 0) return '-';
@@ -510,26 +606,53 @@
             const tbody = document.getElementById('file-table-body');
             tbody.innerHTML = '';
             if (!Array.isArray(files) || files.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">${isSearchResult ? '没有匹配的文件' : '您的云端空空如也'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="table-empty">${isSearchResult ? '没有匹配的文件' : '您的云端空空如也'}</td></tr>`;
                 return;
             }
 
             files.forEach(f => {
                 const displayName = f.original_filename || f.filename || 'file';
-                const safeName = displayName.replace(/'/g, "\\'");
                 const sizeLabel = Number.isFinite(Number(f.size)) ? `${(Number(f.size) / 1024).toFixed(2)} KB` : '-';
                 const uploadDate = f.upload_date || '-';
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${displayName}</td>
-                    <td>${sizeLabel}</td>
-                    <td>${uploadDate}</td>
-                    <td>
-                        <button onclick="downloadFile(${f.id}, '${safeName}')" style="width:auto; padding:5px 10px; background:#28a745">下载</button>
-                        <button onclick="renameFile(${f.id}, '${safeName}')" style="width:auto; padding:5px 10px; background:#fd7e14">重命名</button>
-                        <button onclick="createShare(${f.id})" style="width:auto; padding:5px 10px; background:#6f42c1">分享</button>
-                        <button onclick="deleteFile(${f.id})" style="width:auto; padding:5px 10px; background:#dc3545">删除</button>
-                    </td>`;
+                const nameTd = document.createElement('td');
+                const sizeTd = document.createElement('td');
+                const dateTd = document.createElement('td');
+                const actionTd = document.createElement('td');
+
+                nameTd.textContent = displayName;
+                sizeTd.textContent = sizeLabel;
+                dateTd.textContent = uploadDate;
+
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = '下载';
+                downloadBtn.className = 'btn-action btn-green';
+                downloadBtn.onclick = () => downloadFile(f.id, displayName);
+
+                const renameBtn = document.createElement('button');
+                renameBtn.textContent = '重命名';
+                renameBtn.className = 'btn-action btn-orange btn-inline-spaced';
+                renameBtn.onclick = () => renameFile(f.id, displayName);
+
+                const shareBtn = document.createElement('button');
+                shareBtn.textContent = '分享';
+                shareBtn.className = 'btn-action btn-purple btn-inline-spaced';
+                shareBtn.onclick = () => createShare(f.id);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '删除';
+                deleteBtn.className = 'btn-action btn-red btn-inline-spaced';
+                deleteBtn.onclick = () => deleteFile(f.id);
+
+                actionTd.appendChild(downloadBtn);
+                actionTd.appendChild(renameBtn);
+                actionTd.appendChild(shareBtn);
+                actionTd.appendChild(deleteBtn);
+
+                tr.appendChild(nameTd);
+                tr.appendChild(sizeTd);
+                tr.appendChild(dateTd);
+                tr.appendChild(actionTd);
                 tbody.appendChild(tr);
             });
         }
@@ -597,6 +720,10 @@
                     headers: { 'Authorization': `Bearer ${currentToken}` }
                 });
                 const data = await res.json();
+                if (res.status === 401 || data.code === 401) {
+                    handleUnauthorized();
+                    return;
+                }
                 if (data.code === 200) {
                     const messages = Array.isArray(data.data) ? [...data.data].reverse() : [];
                     renderMessages(messages);
@@ -664,6 +791,10 @@
             try {
                 const res = await fetch(`${API_BASE}/file/list`, { headers: { 'Authorization': `Bearer ${currentToken}` } });
                 const data = await res.json();
+                if (res.status === 401 || data.code === 401) {
+                    handleUnauthorized();
+                    return;
+                }
                 if (data.code === 200 && data.data) {
                     const files = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
                     renderFileRows(files, false);
@@ -682,6 +813,10 @@
                     headers: { 'Authorization': `Bearer ${currentToken}` }
                 });
                 const data = await res.json();
+                if (res.status === 401 || data.code === 401) {
+                    handleUnauthorized();
+                    return;
+                }
                 if (data.code === 200) {
                     const files = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
                     renderFileRows(files, true);
@@ -735,6 +870,22 @@
         async function downloadFile(id, name) {
             try {
                 const res = await fetch(`${API_BASE}/file/download?id=${id}`, { headers: { 'Authorization': `Bearer ${currentToken}` } });
+                if (!res.ok) {
+                    let errorMessage = '下载失败';
+                    try {
+                        const err = await res.json();
+                        if (res.status === 401 || err.code === 401) {
+                            handleUnauthorized();
+                            return;
+                        }
+                        errorMessage = err.message || errorMessage;
+                    } catch (_) {
+                        const errText = await res.text();
+                        errorMessage = errText || errorMessage;
+                    }
+                    showMsg(errorMessage, true);
+                    return;
+                }
                 const blob = await res.blob();
                 showMsg('下载完成 100%');
                 const url = window.URL.createObjectURL(blob);
@@ -744,6 +895,7 @@
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
+                window.URL.revokeObjectURL(url);
             } catch (_) { showMsg('下载失败', true); }
         }
 
@@ -863,10 +1015,7 @@
                     });
                 }
             } catch (_) { }
-            localStorage.removeItem('cloudisk_token');
-            localStorage.removeItem('cloudisk_user');
-            localStorage.removeItem('cloudisk_user_id');
-            localStorage.removeItem('cloudisk_chat_user_id');
+            clearAuthState();
             location.reload();
         }
     </script>
