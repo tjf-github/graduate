@@ -194,6 +194,82 @@
             max-width: 420px;
             box-shadow: 0 4px 18px rgba(0, 0, 0, .2);
         }
+
+        .message-panel {
+            margin-top: 28px;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 18px;
+            background: #fafbfc;
+        }
+
+        .message-toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .message-toolbar input {
+            flex: 1;
+        }
+
+        .message-list {
+            min-height: 220px;
+            max-height: 360px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .message-item {
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: #eef4ff;
+        }
+
+        .message-item.self {
+            background: #dff7e8;
+        }
+
+        .message-meta {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 6px;
+        }
+
+        .message-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        .message-compose {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message-compose textarea {
+            flex: 1;
+            min-height: 84px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            resize: vertical;
+            font: inherit;
+        }
+
+        .message-empty {
+            color: #6c757d;
+            text-align: center;
+            padding: 40px 10px;
+        }
     </style>
 </head>
 
@@ -280,12 +356,32 @@
                 </tr>
             </tbody>
         </table>
+
+        <div class="message-panel">
+            <h2>站内消息</h2>
+            <div class="message-toolbar">
+                <input id="chat-user-id" type="number" min="1" placeholder="输入对方用户 ID">
+                <button onclick="selectChatUser()" style="width:auto;">进入会话</button>
+                <button onclick="loadMessages(true)" style="width:auto; background-color:#28a745;">刷新消息</button>
+            </div>
+            <div id="message-status" style="font-size:13px; color:#6c757d; margin-bottom:10px;">请选择一个用户开始聊天</div>
+            <div id="message-list" class="message-list">
+                <div class="message-empty">暂无会话内容</div>
+            </div>
+            <div class="message-compose">
+                <textarea id="message-input" placeholder="输入消息内容，支持短轮询演示"></textarea>
+                <button onclick="sendMessage()" style="width:140px;">发送消息</button>
+            </div>
+        </div>
     </div>
 
     <script>
         const API_BASE = '/api';
         let currentToken = localStorage.getItem('cloudisk_token') || '';
         let currentUser = localStorage.getItem('cloudisk_user') || '';
+        let currentUserId = Number(localStorage.getItem('cloudisk_user_id') || 0);
+        let activeChatUserId = Number(localStorage.getItem('cloudisk_chat_user_id') || 0);
+        let messagePollTimer = null;
 
         window.onload = () => {
             if (currentToken && currentUser) {
@@ -293,9 +389,12 @@
                 showDiskSection();
                 loadUserProfile();
                 loadFileList();
+                restoreChatState();
             } else {
                 localStorage.removeItem('cloudisk_token');
                 localStorage.removeItem('cloudisk_user');
+                localStorage.removeItem('cloudisk_user_id');
+                localStorage.removeItem('cloudisk_chat_user_id');
             }
         };
 
@@ -352,12 +451,15 @@
                 if (data.code === 200) {
                     currentToken = data.data.token;
                     currentUser = username;
+                    currentUserId = Number(data.data.id || 0);
                     localStorage.setItem('cloudisk_token', currentToken);
                     localStorage.setItem('cloudisk_user', username);
+                    localStorage.setItem('cloudisk_user_id', String(currentUserId || 0));
                     document.getElementById('display-user').textContent = username;
                     showDiskSection();
                     loadUserProfile();
                     loadFileList();
+                    restoreChatState();
                 } else showMsg(data.message || '登录失败', true);
             } catch (_) { showMsg('连接服务器失败', true); }
         }
@@ -368,6 +470,8 @@
                 const data = await res.json();
                 if (data.code !== 200 || !data.data) return;
                 const p = data.data;
+                currentUserId = Number(p.id || 0);
+                localStorage.setItem('cloudisk_user_id', String(currentUserId || 0));
                 document.getElementById('profile-id').textContent = p.id ?? '-';
                 document.getElementById('profile-username').textContent = p.username || currentUser || '-';
                 document.getElementById('profile-email').textContent = p.email || '-';
@@ -381,6 +485,123 @@
                 fill.style.width = `${percent}%`;
                 fill.style.background = percent > 90 ? '#dc3545' : percent > 75 ? '#ffc107' : '#28a745';
             } catch (e) { console.error('用户资料加载失败', e); }
+        }
+
+        function restoreChatState() {
+            if (activeChatUserId > 0) {
+                document.getElementById('chat-user-id').value = activeChatUserId;
+                updateMessageStatus(`当前会话用户 ID：${activeChatUserId}`);
+                startMessagePolling();
+                loadMessages();
+            }
+        }
+
+        function updateMessageStatus(text) {
+            document.getElementById('message-status').textContent = text;
+        }
+
+        function stopMessagePolling() {
+            if (messagePollTimer) {
+                clearInterval(messagePollTimer);
+                messagePollTimer = null;
+            }
+        }
+
+        function startMessagePolling() {
+            stopMessagePolling();
+            if (!activeChatUserId || !currentToken) return;
+            messagePollTimer = setInterval(() => {
+                loadMessages();
+            }, 3000);
+        }
+
+        function selectChatUser() {
+            const value = Number(document.getElementById('chat-user-id').value);
+            if (!Number.isInteger(value) || value <= 0) {
+                showMsg('请输入有效的用户 ID', true);
+                return;
+            }
+            if (currentUserId > 0 && value === currentUserId) {
+                showMsg('不能给自己发消息', true);
+                return;
+            }
+            activeChatUserId = value;
+            localStorage.setItem('cloudisk_chat_user_id', String(activeChatUserId));
+            updateMessageStatus(`当前会话用户 ID：${activeChatUserId}，每 3 秒自动刷新`);
+            loadMessages(true);
+            startMessagePolling();
+        }
+
+        function renderMessages(messages) {
+            const list = document.getElementById('message-list');
+            list.innerHTML = '';
+            if (!Array.isArray(messages) || messages.length === 0) {
+                list.innerHTML = '<div class="message-empty">当前会话还没有消息</div>';
+                return;
+            }
+
+            messages.forEach(msg => {
+                const item = document.createElement('div');
+                item.className = `message-item ${Number(msg.sender_id) === currentUserId ? 'self' : ''}`;
+                const statusText = Number(msg.sender_id) === currentUserId
+                    ? (msg.is_read ? '对方已读' : '对方未读')
+                    : (msg.is_read ? '已读' : '未读');
+                item.innerHTML = `
+                    <div class="message-meta">发送方：${msg.sender_id} | 接收方：${msg.receiver_id} | ${msg.created_at || '-'} | ${statusText}</div>
+                    <div class="message-content"></div>
+                `;
+                item.querySelector('.message-content').textContent = msg.content || '';
+                list.appendChild(item);
+            });
+            list.scrollTop = list.scrollHeight;
+        }
+
+        async function loadMessages(showErrors = false) {
+            if (!activeChatUserId || !currentToken) return;
+            try {
+                const res = await fetch(`${API_BASE}/message/list?with_user_id=${activeChatUserId}&limit=50`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    const messages = Array.isArray(data.data) ? [...data.data].reverse() : [];
+                    renderMessages(messages);
+                    updateMessageStatus(`当前会话用户 ID：${activeChatUserId}，共 ${messages.length} 条消息，每 3 秒自动刷新`);
+                } else if (showErrors) {
+                    showMsg(data.message || '消息加载失败', true);
+                }
+            } catch (_) {
+                if (showErrors) showMsg('消息加载失败', true);
+            }
+        }
+
+        async function sendMessage() {
+            if (!activeChatUserId) {
+                showMsg('请先输入聊天对象用户 ID', true);
+                return;
+            }
+            const content = document.getElementById('message-input').value.trim();
+            if (!content) {
+                showMsg('消息内容不能为空', true);
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE}/message/send`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ receiver_id: activeChatUserId, content })
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    document.getElementById('message-input').value = '';
+                    showMsg('消息发送成功');
+                    loadMessages();
+                } else {
+                    showMsg(data.message || '消息发送失败', true);
+                }
+            } catch (_) {
+                showMsg('消息发送失败', true);
+            }
         }
 
         async function submitProfileUpdate() {
@@ -558,8 +779,11 @@
         }
 
         function handleLogout() {
+            stopMessagePolling();
             localStorage.removeItem('cloudisk_token');
             localStorage.removeItem('cloudisk_user');
+            localStorage.removeItem('cloudisk_user_id');
+            localStorage.removeItem('cloudisk_chat_user_id');
             location.reload();
         }
     </script>

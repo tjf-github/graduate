@@ -51,6 +51,24 @@ static std::string url_encode_utf8(const std::string &str)
     return encoded.str();
 }
 
+static int parse_int_param(const std::map<std::string, std::string> &params,
+                           const std::string &key,
+                           int default_value)
+{
+    auto it = params.find(key);
+    if (it == params.end() || it->second.empty())
+        return default_value;
+
+    try
+    {
+        return std::stoi(it->second);
+    }
+    catch (...)
+    {
+        return default_value;
+    }
+}
+
 // ---------------------------------------------------------
 // 1. HttpHandler 的实现
 // ---------------------------------------------------------
@@ -91,6 +109,10 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_share_create(request);
     if (request.path.find("/api/share/download") == 0 && request.method == "GET")
         return handle_share_download(request);
+    if (request.path == "/api/message/send" && request.method == "POST")
+        return handle_message_send(request);
+    if (request.path == "/api/message/list" && request.method == "GET")
+        return handle_message_list(request);
 
     // 静态文件服务：简单的根目录映射
     std::string file_path;
@@ -603,6 +625,72 @@ HttpResponse HttpHandler::handle_file_search(const HttpRequest &request)
     json_array += "]";
 
     return json_response(200, "Success", json_array);
+}
+
+HttpResponse HttpHandler::handle_message_send(const HttpRequest &request)
+{
+    int sender_id = get_user_id_from_session(request);
+    if (sender_id == -1)
+        return error_response(401, "Unauthorized");
+
+    JsonParser parser(request.body);
+    int receiver_id = parser.get_int("receiver_id", -1);
+    std::string content = parser.get_string("content");
+
+    if (receiver_id <= 0 || content.empty())
+        return error_response(400, "Invalid parameters");
+    if (receiver_id == sender_id)
+        return error_response(400, "Cannot send message to yourself");
+
+    auto receiver = user_manager->get_user_by_id(receiver_id);
+    if (!receiver)
+        return error_response(400, "Receiver not found");
+
+    if (!user_manager->send_message(sender_id, receiver_id, content))
+        return error_response(500, "Failed to send message");
+
+    return json_response(200, "Message sent");
+}
+
+HttpResponse HttpHandler::handle_message_list(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+        return error_response(401, "Unauthorized");
+
+    int with_user_id = parse_int_param(request.params, "with_user_id", -1);
+    int limit = parse_int_param(request.params, "limit", 50);
+    if (with_user_id <= 0)
+        return error_response(400, "with_user_id required");
+    if (limit <= 0)
+        limit = 50;
+    if (limit > 100)
+        limit = 100;
+
+    auto with_user = user_manager->get_user_by_id(with_user_id);
+    if (!with_user)
+        return error_response(400, "Conversation user not found");
+
+    std::vector<UserManager::Message> messages = user_manager->get_messages(user_id, with_user_id, limit);
+    user_manager->mark_messages_read(user_id, with_user_id);
+
+    std::string json_array = "[";
+    for (size_t i = 0; i < messages.size(); ++i)
+    {
+        if (i > 0)
+            json_array += ",";
+        JsonBuilder builder;
+        builder.add("id", messages[i].id);
+        builder.add("sender_id", messages[i].sender_id);
+        builder.add("receiver_id", messages[i].receiver_id);
+        builder.add("content", messages[i].content);
+        builder.add("is_read", messages[i].is_read);
+        builder.add("created_at", messages[i].created_at);
+        json_array += builder.build();
+    }
+    json_array += "]";
+
+    return json_response(200, "ok", json_array);
 }
 
 // 生成分享码和下载分享文件的接口被移除，功能已合并到 HttpHandler 成员函数中

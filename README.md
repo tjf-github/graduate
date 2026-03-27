@@ -1,355 +1,185 @@
-# 云盘系统 - C++ 实现
+# Cloudisk 云盘系统
 
-一个高性能、多线程的云盘系统，使用C++实现，支持用户管理和文件存储功能。
+基于 C++17、原生 socket、线程池和 MySQL 连接池实现的轻量级云盘后端。项目当前已经具备“可编译、可运行、可演示”的基础能力，包含用户系统、文件管理、分享下载和站内消息短轮询。
 
-## 功能特性
+## 项目现状
 
-### ✅ 已实现功能
-- **多线程处理**: 使用线程池处理并发请求
-- **用户系统**: 
-  - 用户注册、登录、登出
-  - 密码加密存储 (SHA256)
-  - 会话管理（30分钟超时）
-  - 存储配额管理（默认10GB）
-  
-- **文件管理**:
-  - 文件上传下载
-  - 文件列表查看
-  - 文件删除
-  - 文件重命名
-  - 文件搜索
-  - 自动存储空间检查
-  
-- **数据库集成**:
-  - MySQL连接池
-  - 事务支持
-  - 自动重连
+### 已实现能力
+- 用户注册、登录、登出
+- Session 鉴权，`Authorization: Bearer <token>` 访问受保护接口
+- 用户资料查看与基础资料修改
+- 文件上传、下载、列表、删除、重命名、搜索
+- 文件分享链接生成与通过分享码下载
+- 站内文本消息发送、会话拉取、已读更新
+- 简单静态前端页面，支持登录、资料展示、上传下载、分享和消息演示
 
-## 系统架构
+### 当前技术栈
+- C++17
+- 原生 TCP socket + 自定义 HTTP 解析
+- 线程池
+- MySQL C API
+- OpenSSL SHA256
+- 静态前端页面 [static/index.html](/home/tjf/graduate/static/index.html)
 
-```
+## 项目结构
+
+```text
 cloudisk/
-├── include/          # 头文件
-│   ├── thread_pool.h
-│   ├── database.h
-│   ├── user_manager.h
-│   ├── file_manager.h
-│   ├── http_handler.h
-│   ├── session_manager.h
-│   ├── json_helper.h
-│   └── server.h
-├── src/             # 源文件
-│   ├── main.cpp
-│   ├── server.cpp
-│   ├── thread_pool.cpp
-│   ├── database.cpp
-│   ├── user_manager.cpp
-│   ├── file_manager.cpp
-│   ├── http_handler.cpp
-│   ├── session_manager.cpp
-│   └── json_helper.cpp
-├── CMakeLists.txt   # 构建配置
-├── Dockerfile       # Docker镜像
-├── docker-compose.yml
-├── init.sql         # 数据库初始化
-└── build.sh         # 编译部署脚本
+├── include/              # 头文件
+├── src/                  # 核心实现
+├── static/index.html     # 简单前端演示页
+├── init.sql              # 数据库初始化脚本
+├── CMakeLists.txt        # CMake 构建配置
+├── build.sh              # 编译/部署辅助脚本
+├── README.md             # 当前项目说明
+└── docs/FEATURE_OUTLINE.md
 ```
 
 ## 快速开始
 
-### 方式1: 本地编译部署（WSL/Linux）
+### 1. 安装依赖
 
-#### 1. 安装依赖
 ```bash
-# Ubuntu/Debian
 sudo apt-get update
 sudo apt-get install -y build-essential cmake libmysqlclient-dev libssl-dev uuid-dev mysql-server
+```
 
-# 启动MySQL
+### 2. 初始化数据库
+
+```bash
 sudo service mysql start
-```
-
-#### 2. 使用自动化脚本
-```bash
-chmod +x build.sh
-./build.sh
-# 选择选项 6 进行完整部署
-```
-
-#### 3. 手动编译（可选）
-```bash
-# 创建构建目录
-mkdir build && cd build
-
-# CMake配置
-cmake ..
-
-# 编译
-make -j$(nproc)
-
-# 返回项目根目录
-cd ..
-```
-
-#### 4. 初始化数据库
-```bash
 mysql -u root -p < init.sql
-# 输入MySQL密码
 ```
 
-#### 5. 配置环境变量
+### 3. 配置运行环境
+
+项目支持通过环境变量覆盖默认配置：
+
 ```bash
-# 创建.env文件或设置环境变量
 export SERVER_PORT=8080
 export STORAGE_PATH=./storage
 export DB_HOST=localhost
-export DB_USER=root
-export DB_PASSWORD=your_password
+export DB_USER=tjf
+export DB_PASSWORD=tjf927701
 export DB_NAME=cloudisk
 ```
 
-#### 6. 运行服务器
+说明：
+- 如果不设置环境变量，程序会使用 [src/main.cpp](/home/tjf/graduate/src/main.cpp) 中的默认值。
+- `STORAGE_PATH` 指向文件实际落盘目录。
+
+### 4. 编译
+
+```bash
+cmake -S . -B build
+cmake --build build
+```
+
+### 5. 启动
+
 ```bash
 ./build/cloudisk_server
 ```
 
-### 方式2: Docker部署
+启动后默认访问地址：
 
-#### 1. 构建并启动
-```bash
-docker-compose up --build -d
-```
-
-#### 2. 查看日志
-```bash
-docker-compose logs -f cloudisk_server
-```
-
-#### 3. 停止服务
-```bash
-docker-compose down
-```
-
-## API接口文档
-
-### 基础URL
-```
+```text
 http://localhost:8080
 ```
 
-### 1. 用户注册
-**POST** `/api/register`
+浏览器直接打开根路径即可加载静态页面：
 
-请求体:
+```text
+http://localhost:8080/
+```
+
+## 数据库概览
+
+`init.sql` 当前会初始化以下核心表：
+- `users`
+- `files`
+- `messages`
+- `share_links`
+- `folders`
+
+其中消息能力使用 `messages` 表，分享能力当前主要复用 `files.share_code` 与分享下载接口。
+
+## 接口约定
+
+### 通用响应格式
+
+当前后端统一返回：
+
+```json
+{
+  "code": 200,
+  "message": "Success",
+  "data": {}
+}
+```
+
+说明：
+- `code` 同时作为业务状态码和 HTTP 状态码主体含义
+- `data` 仅在需要时返回
+- 受保护接口需要 `Authorization: Bearer <token>`
+
+## 核心 API
+
+### 用户相关
+
+#### `POST /api/register`
+
+请求体：
+
 ```json
 {
   "username": "testuser",
   "email": "test@example.com",
-  "password": "password123"
+  "password": "test123"
 }
 ```
 
-响应:
-```json
-{
-  "success": true,
-  "message": "User registered successfully"
-}
-```
+#### `POST /api/login`
 
-### 2. 用户登录
-**POST** `/api/login`
+请求体：
 
-请求体:
 ```json
 {
   "username": "testuser",
-  "password": "password123"
+  "password": "test123"
 }
 ```
 
-响应:
+成功响应示例：
+
 ```json
 {
-  "success": true,
-  "message": "Login successful",
+  "code": 200,
+  "message": "Login success",
   "data": {
     "id": 1,
-    "username": "testuser",
-    "email": "test@example.com",
-    "storage_used": 0,
-    "storage_limit": 10737418240,
-    "token": "abc123..."
+    "token": "session_token",
+    "username": "testuser"
   }
 }
 ```
 
-### 3. 获取用户信息
-**GET** `/api/user/info`
+#### `POST /api/logout`
 
-请求头:
-```
-Authorization: Bearer {token}
-```
+请求头：
 
-响应:
-```json
-{
-  "success": true,
-  "message": "Success",
-  "data": {
-    "id": 1,
-    "username": "testuser",
-    "email": "test@example.com",
-    "storage_used": 1048576,
-    "storage_limit": 10737418240
-  }
-}
+```text
+Authorization: Bearer <token>
 ```
 
-### 4. 文件上传
-**POST** `/api/file/upload`
+#### `GET /api/user/info`
 
-请求头:
-```
-Authorization: Bearer {token}
-X-Filename: document.pdf
-Content-Type: application/octet-stream
-```
+返回用户 ID、用户名、邮箱、空间占用、注册时间、当前会话数和超时策略。
 
-请求体: 二进制文件数据
+#### `PUT /api/user/profile`
 
-响应:
-```json
-{
-  "success": true,
-  "message": "File uploaded successfully",
-  "data": {
-    "id": 1,
-    "filename": "document.pdf",
-    "size": 1048576
-  }
-}
-```
+请求体：
 
-### 5. 文件列表
-**GET** `/api/file/list?offset=0&limit=10`
-
-请求头:
-```
-Authorization: Bearer {token}
-```
-
-响应:
-```json
-{
-  "success": true,
-  "message": "Success",
-  "data": [
-    {
-      "id": 1,
-      "filename": "document.pdf",
-      "size": 1048576,
-      "mime_type": "application/pdf",
-      "upload_date": "2024-01-01 10:00:00"
-    }
-  ]
-}
-```
-
-### 6. 文件下载
-**GET** `/api/file/download/{file_id}`
-
-请求头:
-```
-Authorization: Bearer {token}
-```
-
-响应: 文件二进制数据
-
-### 7. 文件删除
-**DELETE** `/api/file/delete/{file_id}`
-
-请求头:
-```
-Authorization: Bearer {token}
-```
-
-响应:
-```json
-{
-  "success": true,
-  "message": "File deleted successfully"
-}
-```
-
-### 8. 文件重命名
-**PUT** `/api/file/rename`
-
-请求头:
-```
-Authorization: Bearer {token}
-```
-
-请求体:
-```json
-{
-  "file_id": 1,
-  "new_filename": "new_document.pdf"
-}
-```
-
-响应:
-```json
-{
-  "success": true,
-  "message": "File renamed successfully"
-}
-```
-
-### 9. 文件搜索
-**GET** `/api/file/search?keyword=document`
-
-请求头:
-```
-Authorization: Bearer {token}
-```
-
-响应:
-```json
-{
-  "success": true,
-  "message": "Success",
-  "data": [...]
-}
-```
-
-### 10. 用户登出
-**POST** `/api/logout`
-
-请求头:
-```
-Authorization: Bearer {token}
-```
-
-响应:
-```json
-{
-  "success": true,
-  "message": "Logout successful"
-}
-```
-
-### 11. 更新用户资料
-**PUT** `/api/user/profile`
-
-请求头:
-```
-Authorization: Bearer {token}
-Content-Type: application/json
-```
-
-请求体:
 ```json
 {
   "username": "new_name",
@@ -357,184 +187,147 @@ Content-Type: application/json
 }
 ```
 
-### 12. 创建站内分享
-**POST** `/api/share/create`
+### 文件相关
 
-请求体:
+#### `GET /api/file/list?offset=0&limit=10`
+- 返回当前用户文件列表
+
+#### `POST /api/file/upload`
+
+请求头：
+
+```text
+Authorization: Bearer <token>
+X-Filename: test.txt
+```
+
+请求体为原始二进制文件内容。
+
+#### `GET /api/file/download?id=1`
+- 下载当前用户自己的文件
+
+#### `POST /api/file/delete`
+
+请求体：
+
+```json
+{
+  "id": 1
+}
+```
+
+#### `POST /api/file/rename`
+
+请求体：
+
+```json
+{
+  "id": 1,
+  "new_name": "renamed.txt"
+}
+```
+
+#### `GET /api/file/search?keyword=test`
+- 按文件名关键字搜索当前用户文件
+
+### 分享相关
+
+#### `POST /api/share/create`
+
+请求体：
+
 ```json
 {
   "file_id": 1
 }
 ```
 
-### 13. 通过分享链接下载
-**GET** `/api/share/download?code={share_code}`
+成功后返回 `share_code` 和 `share_url`。
 
-## 测试
+#### `GET /api/share/download?code=xxxx`
+- 无需登录即可通过分享码下载文件
 
-### 使用curl测试
+### 消息相关
 
-```bash
-# 1. 注册用户
-curl -X POST http://localhost:8080/api/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","email":"test@example.com","password":"test123"}'
+#### `POST /api/message/send`
 
-# 2. 登录
-TOKEN=$(curl -X POST http://localhost:8080/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"test123"}' \
-  | jq -r '.data.token')
+请求体：
 
-# 3. 上传文件
-curl -X POST http://localhost:8080/api/file/upload \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "X-Filename: test.txt" \
-  --data-binary @test.txt
-
-# 4. 获取文件列表
-curl -X GET http://localhost:8080/api/file/list \
-  -H "Authorization: Bearer $TOKEN"
-
-# 5. 下载文件
-curl -X GET http://localhost:8080/api/file/download/1 \
-  -H "Authorization: Bearer $TOKEN" \
-  -o downloaded_file.txt
-```
-
-## 部署到云服务器
-
-### 1. 准备云服务器
-- Ubuntu 20.04/22.04
-- 2GB+ RAM
-- 开放8080端口
-
-### 2. 上传代码
-```bash
-# 使用scp或git
-scp -r ./* user@server_ip:/path/to/cloudisk/
-# 或
-git clone your_repository.git
-```
-
-### 3. 安装依赖并编译
-```bash
-ssh user@server_ip
-cd /path/to/cloudisk
-./build.sh
-# 选择选项 6
-```
-
-### 4. 使用systemd管理服务
-
-创建服务文件:
-```bash
-sudo nano /etc/systemd/system/cloudisk.service
-```
-
-内容:
-```ini
-[Unit]
-Description=Cloud Disk Server
-After=network.target mysql.service
-
-[Service]
-Type=simple
-User=your_user
-WorkingDirectory=/path/to/cloudisk
-Environment="SERVER_PORT=8080"
-Environment="STORAGE_PATH=/path/to/cloudisk/storage"
-Environment="DB_HOST=localhost"
-Environment="DB_USER=root"
-Environment="DB_PASSWORD=your_password"
-Environment="DB_NAME=cloudisk"
-ExecStart=/path/to/cloudisk/build/cloudisk_server
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-启动服务:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable cloudisk
-sudo systemctl start cloudisk
-sudo systemctl status cloudisk
-```
-
-### 5. 配置Nginx反向代理（可选）
-
-```nginx
-server {
-    listen 80;
-    server_name your_domain.com;
-    
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        client_max_body_size 100M;
-    }
+```json
+{
+  "receiver_id": 2,
+  "content": "hello"
 }
 ```
 
-## 性能优化
+#### `GET /api/message/list?with_user_id=2&limit=50`
+- 返回当前用户与指定用户的双向消息
+- 默认按时间倒序返回，前端展示时会转成正序
+- 拉取时会自动将“对方向当前用户发送”的消息标记为已读
 
-1. **线程池大小**: 根据CPU核心数调整（默认10）
-2. **数据库连接池**: 根据并发需求调整（默认10）
-3. **会话超时**: 默认30分钟
-4. **文件存储**: 使用SSD提升I/O性能
+## 快速验收示例
 
-## 故障排除
+### 1. 注册
 
-### 编译错误
 ```bash
-# 检查依赖是否安装
-dpkg -l | grep -E 'libmysqlclient-dev|libssl-dev|uuid-dev'
-
-# 清理重新编译
-rm -rf build
-./build.sh
+curl -X POST http://localhost:8080/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user_a","email":"a@test.com","password":"test123"}'
 ```
 
-### 数据库连接失败
+### 2. 登录
+
 ```bash
-# 检查MySQL状态
-sudo service mysql status
-
-# 检查密码和权限
-mysql -u root -p
-
-# 重新初始化数据库
-mysql -u root -p < init.sql
+TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user_a","password":"test123"}' | jq -r '.data.token')
 ```
 
-### 端口被占用
-```bash
-# 查看端口占用
-sudo lsof -i :8080
+### 3. 文件列表
 
-# 修改端口
-export SERVER_PORT=8081
+```bash
+curl -X GET http://localhost:8080/api/file/list \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-## 安全建议
+### 4. 发送消息
 
-1. **修改默认密码**: 更改init.sql中的测试用户密码
-2. **使用HTTPS**: 在生产环境配置SSL证书
-3. **防火墙配置**: 只开放必要端口
-4. **定期备份**: 备份数据库和存储文件
-5. **日志监控**: 设置日志记录和监控
+```bash
+curl -X POST http://localhost:8080/api/message/send \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"receiver_id":2,"content":"hello"}'
+```
 
-## 许可证
+### 5. 拉取消息
 
-MIT License
+```bash
+curl -X GET "http://localhost:8080/api/message/list?with_user_id=2&limit=20" \
+  -H "Authorization: Bearer $TOKEN"
+```
 
-## 贡献
+## 当前前端演示范围
 
-欢迎提交Issue和Pull Request！
+[static/index.html](/home/tjf/graduate/static/index.html) 当前支持：
+- 注册 / 登录
+- 查看个人资料与空间占用
+- 修改用户名和邮箱
+- 上传 / 下载 / 删除文件
+- 生成分享链接并通过链接下载
+- 输入用户 ID 进行站内消息收发与短轮询刷新
 
-## 联系方式
+说明：
+- 文件重命名、文件搜索后端已实现，但页面尚未提供独立操作入口。
+- 消息模块为“最小可演示版本”，不包含联系人列表、未读角标和通知中心。
 
-如有问题，请提交Issue。
+## 已知限制
+
+- HTTP 解析和 JSON 解析都比较轻量，只覆盖当前项目需要的基础场景
+- SQL 主要通过字符串拼接完成，已做 `escape_string`，但未全面使用 prepared statement
+- Session 存在内存中，服务重启后会失效
+- 分享能力目前是基础版，不包含过期时间、提取码、访问统计
+- 前端是单页静态演示，不是完整生产级管理台
+
+## 后续规划
+
+后续迭代方向已整理到 [docs/FEATURE_OUTLINE.md](/home/tjf/graduate/docs/FEATURE_OUTLINE.md)，区分了“当前已完成能力”和“下一阶段建议优先级”。

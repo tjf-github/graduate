@@ -11,6 +11,90 @@
 UserManager::UserManager(std::shared_ptr<DBConnectionPool> pool)
     : db_pool(pool) {}
 
+bool UserManager::send_message(int sender_id, int receiver_id, const std::string &content)
+{
+    if (sender_id <= 0 || receiver_id <= 0 || content.empty())
+        return false;
+
+    auto db = db_pool->get_connection();
+    if (!db)
+        return false;
+
+    std::string query =
+        "INSERT INTO messages (sender_id, receiver_id, content) VALUES (" +
+        std::to_string(sender_id) + ", " +
+        std::to_string(receiver_id) + ", '" +
+        db->escape_string(content) + "')";
+
+    bool success = db->execute(query);
+    db_pool->return_connection(db);
+    return success;
+}
+
+std::vector<UserManager::Message> UserManager::get_messages(int user_id, int with_user_id, int limit)
+{
+    std::vector<Message> messages;
+    if (user_id <= 0 || with_user_id <= 0 || limit <= 0)
+        return messages;
+
+    auto db = db_pool->get_connection();
+    if (!db)
+        return messages;
+
+    std::string query =
+        "SELECT id, sender_id, receiver_id, content, is_read, created_at "
+        "FROM messages WHERE "
+        "(sender_id = " + std::to_string(user_id) +
+        " AND receiver_id = " + std::to_string(with_user_id) + ") "
+        "OR "
+        "(sender_id = " + std::to_string(with_user_id) +
+        " AND receiver_id = " + std::to_string(user_id) + ") "
+        "ORDER BY created_at DESC, id DESC LIMIT " + std::to_string(limit);
+
+    MYSQL_RES *result = db->query(query);
+    if (!result)
+    {
+        db_pool->return_connection(db);
+        return messages;
+    }
+
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(result)))
+    {
+        Message message;
+        message.id = std::stoi(row[0] ? row[0] : "0");
+        message.sender_id = std::stoi(row[1] ? row[1] : "0");
+        message.receiver_id = std::stoi(row[2] ? row[2] : "0");
+        message.content = row[3] ? row[3] : "";
+        message.is_read = row[4] && std::string(row[4]) != "0";
+        message.created_at = row[5] ? row[5] : "";
+        messages.push_back(message);
+    }
+
+    mysql_free_result(result);
+    db_pool->return_connection(db);
+    return messages;
+}
+
+bool UserManager::mark_messages_read(int user_id, int sender_id)
+{
+    if (user_id <= 0 || sender_id <= 0)
+        return false;
+
+    auto db = db_pool->get_connection();
+    if (!db)
+        return false;
+
+    std::string query =
+        "UPDATE messages SET is_read = 1 WHERE receiver_id = " +
+        std::to_string(user_id) + " AND sender_id = " + std::to_string(sender_id) +
+        " AND is_read = 0";
+
+    bool success = db->execute(query);
+    db_pool->return_connection(db);
+    return success;
+}
+
 // 初级hash，未加盐
 std::string UserManager::hash_password(const std::string &password)
 {
