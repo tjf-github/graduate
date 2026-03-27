@@ -341,6 +341,12 @@
             <button onclick="loadFileList()" style="width:auto; background-color:#28a745;">刷新</button>
         </div>
 
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <input id="file-search-input" type="text" placeholder="按文件名搜索，例如 report 或 .pdf" style="flex:1;">
+            <button onclick="searchFiles()" style="width:auto; background-color:#17a2b8;">搜索</button>
+            <button onclick="resetFileSearch()" style="width:auto; background-color:#6c757d;">清空搜索</button>
+        </div>
+
         <table>
             <thead>
                 <tr>
@@ -500,6 +506,34 @@
             document.getElementById('message-status').textContent = text;
         }
 
+        function renderFileRows(files, isSearchResult = false) {
+            const tbody = document.getElementById('file-table-body');
+            tbody.innerHTML = '';
+            if (!Array.isArray(files) || files.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">${isSearchResult ? '没有匹配的文件' : '您的云端空空如也'}</td></tr>`;
+                return;
+            }
+
+            files.forEach(f => {
+                const displayName = f.original_filename || f.filename || 'file';
+                const safeName = displayName.replace(/'/g, "\\'");
+                const sizeLabel = Number.isFinite(Number(f.size)) ? `${(Number(f.size) / 1024).toFixed(2)} KB` : '-';
+                const uploadDate = f.upload_date || '-';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${displayName}</td>
+                    <td>${sizeLabel}</td>
+                    <td>${uploadDate}</td>
+                    <td>
+                        <button onclick="downloadFile(${f.id}, '${safeName}')" style="width:auto; padding:5px 10px; background:#28a745">下载</button>
+                        <button onclick="renameFile(${f.id}, '${safeName}')" style="width:auto; padding:5px 10px; background:#fd7e14">重命名</button>
+                        <button onclick="createShare(${f.id})" style="width:auto; padding:5px 10px; background:#6f42c1">分享</button>
+                        <button onclick="deleteFile(${f.id})" style="width:auto; padding:5px 10px; background:#dc3545">删除</button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
         function stopMessagePolling() {
             if (messagePollTimer) {
                 clearInterval(messagePollTimer);
@@ -630,30 +664,39 @@
             try {
                 const res = await fetch(`${API_BASE}/file/list`, { headers: { 'Authorization': `Bearer ${currentToken}` } });
                 const data = await res.json();
-                const tbody = document.getElementById('file-table-body');
-                tbody.innerHTML = '';
                 if (data.code === 200 && data.data) {
                     const files = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-                    if (files.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">您的云端空空如也</td></tr>';
-                        return;
-                    }
-                    files.forEach(f => {
-                        const safeName = (f.original_filename || f.filename || 'file').replace(/'/g, "\\'");
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${f.original_filename || f.filename}</td>
-                            <td>${(f.size / 1024).toFixed(2)} KB</td>
-                            <td>${f.upload_date}</td>
-                            <td>
-                                <button onclick="downloadFile(${f.id}, '${safeName}')" style="width:auto; padding:5px 10px; background:#28a745">下载</button>
-                                <button onclick="createShare(${f.id})" style="width:auto; padding:5px 10px; background:#6f42c1">分享</button>
-                                <button onclick="deleteFile(${f.id})" style="width:auto; padding:5px 10px; background:#dc3545">删除</button>
-                            </td>`;
-                        tbody.appendChild(tr);
-                    });
+                    renderFileRows(files, false);
                 }
             } catch (e) { console.error('列表加载失败', e); }
+        }
+
+        async function searchFiles() {
+            const keyword = document.getElementById('file-search-input').value.trim();
+            if (!keyword) {
+                showMsg('请输入要搜索的文件名关键字', true);
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE}/file/search?keyword=${encodeURIComponent(keyword)}`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    const files = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+                    renderFileRows(files, true);
+                    showMsg(`搜索完成，共找到 ${Array.isArray(files) ? files.length : 0} 个文件`);
+                } else {
+                    showMsg(data.message || '搜索失败', true);
+                }
+            } catch (_) {
+                showMsg('搜索请求失败', true);
+            }
+        }
+
+        function resetFileSearch() {
+            document.getElementById('file-search-input').value = '';
+            loadFileList();
         }
 
         async function handleUpload() {
@@ -778,8 +821,48 @@
             } catch (_) { showMsg('操作失败', true); }
         }
 
-        function handleLogout() {
+        async function renameFile(id, oldName) {
+            const newName = prompt('请输入新的文件名', oldName || '');
+            if (newName === null) return;
+            const finalName = newName.trim();
+            if (!finalName) {
+                showMsg('文件名不能为空', true);
+                return;
+            }
+            if (finalName === oldName) {
+                showMsg('文件名未发生变化');
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE}/file/rename`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, new_name: finalName })
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    showMsg('文件重命名成功');
+                    const keyword = document.getElementById('file-search-input').value.trim();
+                    if (keyword) searchFiles();
+                    else loadFileList();
+                } else {
+                    showMsg(data.message || '文件重命名失败', true);
+                }
+            } catch (_) {
+                showMsg('文件重命名失败', true);
+            }
+        }
+
+        async function handleLogout() {
             stopMessagePolling();
+            try {
+                if (currentToken) {
+                    await fetch(`${API_BASE}/logout`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${currentToken}` }
+                    });
+                }
+            } catch (_) { }
             localStorage.removeItem('cloudisk_token');
             localStorage.removeItem('cloudisk_user');
             localStorage.removeItem('cloudisk_user_id');
