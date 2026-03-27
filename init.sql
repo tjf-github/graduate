@@ -40,6 +40,19 @@ CREATE TABLE IF NOT EXISTS files (
     INDEX idx_upload_date (upload_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--聊天消息表
+CREATE TABLE messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(id),
+    INDEX idx_receiver (receiver_id),
+    INDEX idx_conversation (sender_id, receiver_id)
+);
 -- 分享链接表（可选功能）
 CREATE TABLE IF NOT EXISTS share_links (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -70,6 +70,9 @@ private:
     HttpResponse handle_share_create(const HttpRequest &request);
     HttpResponse handle_share_download(const HttpRequest &request);
 
+    HttpResponse handle_message_send(const HttpRequest &request);
+    HttpResponse handle_message_list(const HttpRequest &request);
+
     int get_user_id_from_session(const HttpRequest &request);
     std::string get_session_token(const HttpRequest &request);
     HttpResponse json_response(int code, const std::string &message,

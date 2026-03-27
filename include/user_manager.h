@@ -26,6 +26,20 @@ struct User
 class UserManager
 {
 public:
+    // 消息相关
+    struct Message
+    {
+        int id;
+        int sender_id;
+        int receiver_id;
+        std::string content;
+        std::string created_at;
+        bool is_read;
+    };
+
+    bool send_message(int sender_id, int receiver_id, const std::string &content);
+    std::vector<Message> get_messages(int user_id, int with_user_id, int limit = 50);
+    bool mark_messages_read(int user_id, int sender_id);
     explicit UserManager(std::shared_ptr<DBConnectionPool> pool);
 
     // 用户注册
