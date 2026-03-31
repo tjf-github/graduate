@@ -17,10 +17,6 @@ struct User
     // 用户存储空间限制，单位为字节
     long long storage_limit;
     std::string created_at;
-    // 发送和获取消息
-    // std::string message;
-    // int sender_id;
-    // int receiver_id;
 };
 
 class UserManager
@@ -33,6 +29,7 @@ public:
         int sender_id;
         int receiver_id;
         std::string content;
+        // 消息创建时间，格式为 ISO 8601字符串
         std::string created_at;
         bool is_read;
     };
