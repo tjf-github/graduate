@@ -44,13 +44,8 @@ public:
     HttpResponse handle_request(const HttpRequest &request);
 
 private:
-    struct ShareInfo
-    {
-        std::string share_code;
-        int owner_user_id;
-        int file_id;
-        std::string created_at;
-    };
+    //std::map<pair<std::string, std::string>, std::function<HttpResponse(const HttpRequest &)>> handlers;
+    //handlers[{"POST", "/api/register"}] = [this](const HttpRequest &req) { return handle_register(req); };
 
     std::shared_ptr<UserManager> user_manager;
     std::shared_ptr<FileManager> file_manager;

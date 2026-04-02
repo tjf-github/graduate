@@ -28,15 +28,22 @@ public:
         int id;
         int sender_id;
         int receiver_id;
+        //消息内容，最大长度为1000字符
         std::string content;
         // 消息创建时间，格式为 ISO 8601字符串
         std::string created_at;
         bool is_read;
     };
 
+    //发送消息
     bool send_message(int sender_id, int receiver_id, const std::string &content);
+    // 获取用户之间的消息记录，按照时间倒序排列，默认返回最近50条消息
     std::vector<Message> get_messages(int user_id, int with_user_id, int limit = 50);
+    // 将用户之间的消息标记为已读
     bool mark_messages_read(int user_id, int sender_id);
+
+
+
     explicit UserManager(std::shared_ptr<DBConnectionPool> pool);
 
     // 用户注册

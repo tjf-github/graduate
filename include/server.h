@@ -39,7 +39,9 @@ private:
     
     // 辅助函数
     bool create_socket();
+    // 处理客户端连接
     void handle_client(int client_fd);
+    // 定期清理过期会话
     void cleanup_sessions_periodically();
 };
 

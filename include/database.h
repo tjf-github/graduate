@@ -82,6 +82,7 @@ public:
 private:
     // 连接池中的数据库连接列表
     std::vector<std::shared_ptr<Database>> connections;
+    //连接占用
     std::vector<bool> available;
     DBConfig config;
     std::mutex pool_mutex;

@@ -81,6 +81,8 @@ HttpHandler::HttpHandler(std::shared_ptr<UserManager> user_mgr,
 // 根据请求路径和方法调用相应的处理函数，返回HTTP响应
 HttpResponse HttpHandler::handle_request(const HttpRequest &request)
 {
+    //pair<std::string, std::string> route_key = {request.path, request.method};
+    //return handlers[route_key](request);
     if (request.path == "/api/register" && request.method == "POST")
         return handle_register(request);
     if (request.path == "/api/login" && request.method == "POST")
@@ -630,6 +632,7 @@ HttpResponse HttpHandler::handle_file_search(const HttpRequest &request)
     return json_response(200, "Success", json_array);
 }
 
+// 消息发送接口，前端通过 POST /api/message/send 发送消息，参数包括 receiver_id 和 content
 HttpResponse HttpHandler::handle_message_send(const HttpRequest &request)
 {
     int sender_id = get_user_id_from_session(request);
