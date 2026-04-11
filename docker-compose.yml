@@ -25,11 +25,11 @@ services:
       retries: 5
 
   # 云盘服务器
-  cloudisk_server:
+  lightweight_comm_server:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: cloudisk_server
+    container_name: lightweight_comm_server
     restart: unless-stopped
     depends_on:
       mysql:

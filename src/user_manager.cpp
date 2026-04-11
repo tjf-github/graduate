@@ -31,7 +31,7 @@ bool UserManager::send_message(int sender_id, int receiver_id, const std::string
     return success;
 }
 
-std::vector<UserManager::Message> UserManager::get_messages(int user_id, int with_user_id, int limit)
+std::vector<Message> UserManager::get_messages(int user_id, int with_user_id, int limit)
 {
     std::vector<Message> messages;
     if (user_id <= 0 || with_user_id <= 0 || limit <= 0)

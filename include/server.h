@@ -8,6 +8,7 @@
 #include "file_manager.h"
 #include "http_handler.h"
 #include "session_manager.h"
+#include "client_manager.h"
 
 class CloudDiskServer {
 public:
@@ -35,6 +36,7 @@ private:
     std::shared_ptr<UserManager> user_manager;
     std::shared_ptr<FileManager> file_manager;
     std::shared_ptr<SessionManager> session_manager;
+    std::shared_ptr<ClientManager> client_manager;
     std::shared_ptr<HttpHandler> http_handler;
     
     // 辅助函数

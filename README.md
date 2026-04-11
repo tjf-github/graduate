@@ -1,6 +1,6 @@
-# Cloudisk 云盘系统
+# lightweight_comm_server
 
-基于 C++17、原生 socket、线程池和 MySQL 连接池实现的轻量级云盘后端。项目当前已经具备“可编译、可运行、可演示”的基础能力，包含用户系统、文件管理、分享下载和站内消息短轮询。
+lightweight_comm_server 是一个基于 C++ Socket 的轻量级网络通信服务器，支持多客户端并发连接、文件传输与站内消息收发。项目当前已经具备“可编译、可运行、可演示”的基础能力，包含用户系统、文件管理、分享下载和站内消息短轮询。
 
 ## 项目现状
 
@@ -78,7 +78,7 @@ cmake --build build
 ### 5. 启动
 
 ```bash
-./build/cloudisk_server
+./build/lightweight_comm_server
 ```
 
 启动后默认访问地址：

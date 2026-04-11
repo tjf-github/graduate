@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-// 简单的JSON构建器类
+// 简单的JSON构建器类--序列化
 class JsonBuilder {
 public:
     JsonBuilder& add(const std::string& key, const std::string& value);
@@ -17,12 +17,13 @@ public:
     std::string build();
     
 private:
+    // 存储键值对的容器
     std::map<std::string, std::string> data;
-    
+    // 转义字符串中的特殊字符
     std::string escape_json(const std::string& str);
 };
 
-// 简单的JSON解析器
+// 简单的JSON解析器--反序列化
 class JsonParser {
 public:
     explicit JsonParser(const std::string& json_str);
@@ -36,9 +37,11 @@ public:
     bool get_bool(const std::string& key, bool default_value = false) const;
     
 private:
+    // 存储解析后的键值对
     std::map<std::string, std::string> data;
-    
+    // 解析JSON字符串
     void parse(const std::string& json_str);
+    // 去除字符串两端的空白字符
     std::string trim(const std::string& str);
 };
 

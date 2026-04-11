@@ -8,6 +8,7 @@
 #include "user_manager.h"
 #include "file_manager.h"
 #include "session_manager.h"
+#include "client_manager.h"
 
 // http请求的基本结构体，包含请求方法、路径、版本、头部信息、请求体和查询参数等
 struct HttpRequest
@@ -38,7 +39,8 @@ class HttpHandler
 public:
     HttpHandler(std::shared_ptr<UserManager> user_mgr,
                 std::shared_ptr<FileManager> file_mgr,
-                std::shared_ptr<SessionManager> session_mgr);
+                std::shared_ptr<SessionManager> session_mgr,
+                std::shared_ptr<ClientManager> client_mgr);
 
     // 处理HTTP请求，根据请求路径和方法调用相应的处理函数，返回HTTP响应
     HttpResponse handle_request(const HttpRequest &request);
@@ -50,6 +52,7 @@ private:
     std::shared_ptr<UserManager> user_manager;
     std::shared_ptr<FileManager> file_manager;
     std::shared_ptr<SessionManager> session_manager;
+    std::shared_ptr<ClientManager> client_manager;
 
     HttpResponse handle_register(const HttpRequest &request);
     HttpResponse handle_login(const HttpRequest &request);
@@ -64,6 +67,7 @@ private:
     HttpResponse handle_file_search(const HttpRequest &request);
     HttpResponse handle_share_create(const HttpRequest &request);
     HttpResponse handle_share_download(const HttpRequest &request);
+    HttpResponse handle_server_status(const HttpRequest &request);
 
     HttpResponse handle_message_send(const HttpRequest &request);
     HttpResponse handle_message_list(const HttpRequest &request);

@@ -19,22 +19,19 @@ struct User
     std::string created_at;
 };
 
+struct Message
+{
+    int id;
+    int sender_id;
+    int receiver_id;
+    std::string content;
+    std::string created_at;
+    bool is_read;
+};
+
 class UserManager
 {
 public:
-    // 消息相关
-    struct Message
-    {
-        int id;
-        int sender_id;
-        int receiver_id;
-        //消息内容，最大长度为1000字符
-        std::string content;
-        // 消息创建时间，格式为 ISO 8601字符串
-        std::string created_at;
-        bool is_read;
-    };
-
     //发送消息
     bool send_message(int sender_id, int receiver_id, const std::string &content);
     // 获取用户之间的消息记录，按照时间倒序排列，默认返回最近50条消息

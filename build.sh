@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 云盘服务器编译和部署脚本
+# lightweight_comm_server 编译和部署脚本
 
 set -e
 
@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  云盘服务器 - 编译和部署脚本${NC}"
+echo -e "${GREEN}  lightweight_comm_server - 编译和部署脚本${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 # 检查依赖
@@ -127,7 +127,7 @@ run_server() {
         export $(cat .env | xargs)
     fi
     
-    ./build/cloudisk_server
+    ./build/lightweight_comm_server
 }
 
 # 主菜单

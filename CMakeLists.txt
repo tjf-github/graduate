@@ -1,6 +1,6 @@
 ##初始声明
 cmake_minimum_required(VERSION 3.10)
-project(CloudDisk)
+project(lightweight_comm_server)
 
 ##设置 C++ 标准
 set(CMAKE_CXX_STANDARD 17)
@@ -30,6 +30,7 @@ link_directories(
 set(SOURCES
     src/main.cpp
     src/logger.cpp
+    src/client_manager.cpp
     src/server.cpp
     src/thread_pool.cpp
     src/database.cpp
@@ -42,10 +43,10 @@ set(SOURCES
 
 # --- 修正后的片段 ---
 # 生成可执行文件
-add_executable(cloudisk_server ${SOURCES})
+add_executable(lightweight_comm_server ${SOURCES})
 
 # 链接库 (删掉 uroot)
-target_link_libraries(cloudisk_server
+target_link_libraries(lightweight_comm_server
     Threads::Threads
     mysqlclient
     OpenSSL::SSL
@@ -55,7 +56,7 @@ target_link_libraries(cloudisk_server
 )
 
 # 编译选项
-target_compile_options(cloudisk_server PRIVATE -Wall -Wextra -O2)
+target_compile_options(lightweight_comm_server PRIVATE -Wall -Wextra -O2)
 
 if(WIN32)
     # Windows 下可能需要手动指定路径或通过 VCPKG 查找

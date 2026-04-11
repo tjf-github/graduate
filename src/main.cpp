@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     signal(SIGTERM, signal_handler);
 
     std::cout << "==================================" << std::endl;
-    std::cout << "Cloud Disk Server v1.0" << std::endl;
+    std::cout << "lightweight_comm_server v1.0" << std::endl;
     std::cout << "==================================" << std::endl;
     std::cout << "Port: " << port << std::endl;
     std::cout << "Storage: " << storage_path << std::endl;

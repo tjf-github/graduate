@@ -41,7 +41,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # 从构建阶段复制可执行文件
-COPY --from=builder /build/build/cloudisk_server /app/
+COPY --from=builder /build/build/lightweight_comm_server /app/
 
 # 创建存储目录
 RUN mkdir -p /app/storage
@@ -58,4 +58,4 @@ ENV DB_NAME=cloudisk
 EXPOSE 8080
 
 # 启动服务器
-CMD ["/app/cloudisk_server"]
+CMD ["/app/lightweight_comm_server"]

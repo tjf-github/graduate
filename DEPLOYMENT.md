@@ -157,7 +157,7 @@ Type=simple
 User=root
 WorkingDirectory=/opt/cloudisk
 EnvironmentFile=/opt/cloudisk/.env
-ExecStart=/opt/cloudisk/build/cloudisk_server
+ExecStart=/opt/cloudisk/build/lightweight_comm_server
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -331,7 +331,7 @@ sudo journalctl -u cloudisk -f
 sudo journalctl -u cloudisk -n 100
 
 # Docker日志
-sudo docker-compose logs -f cloudisk_server
+sudo docker-compose logs -f lightweight_comm_server
 ```
 
 ### 服务管理
@@ -436,7 +436,7 @@ sudo lsof -i :8080
 
 # 手动运行查看错误
 cd /opt/cloudisk
-./build/cloudisk_server
+./build/lightweight_comm_server
 ```
 
 ### 2. 数据库连接失败

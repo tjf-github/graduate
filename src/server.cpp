@@ -40,10 +40,11 @@ CloudDiskServer::CloudDiskServer(int p, const DBConfig &db_config,
     user_manager = std::make_shared<UserManager>(db_pool);
     file_manager = std::make_shared<FileManager>(db_pool, storage_path);
     session_manager = std::make_shared<SessionManager>(30); // 30分钟超时
+    client_manager = std::make_shared<ClientManager>();
 
     // 初始化HTTP处理器
     http_handler = std::make_shared<HttpHandler>(
-        user_manager, file_manager, session_manager);
+        user_manager, file_manager, session_manager, client_manager);
 }
 
 CloudDiskServer::~CloudDiskServer()
@@ -171,6 +172,7 @@ void CloudDiskServer::handle_client(int client_fd)
     if (bytes_read < 0)
     {
         std::cerr << "Error reading from client" << std::endl;
+        client_manager->remove_client(client_fd);
         close(client_fd);
         return;
     }
@@ -190,6 +192,7 @@ void CloudDiskServer::handle_client(int client_fd)
     }
 
     // 关闭连接
+    client_manager->remove_client(client_fd);
     close(client_fd);
     std::cout << "Client disconnected" << std::endl;
 }
@@ -198,10 +201,9 @@ void CloudDiskServer::handle_client(int client_fd)
 void CloudDiskServer::run()
 {
     struct sockaddr_in client_address;
-    socklen_t client_len = sizeof(client_address);
-
     while (running)
     {
+        socklen_t client_len = sizeof(client_address);
         int client_fd = accept(server_fd, (struct sockaddr *)&client_address,
                                &client_len);
 
@@ -213,6 +215,13 @@ void CloudDiskServer::run()
             }
             continue;
         }
+
+        char ip_buffer[INET_ADDRSTRLEN] = {0};
+        const char *ip_ptr = inet_ntop(AF_INET, &client_address.sin_addr,
+                                       ip_buffer, sizeof(ip_buffer));
+        const std::string ip_str = ip_ptr ? ip_ptr : "";
+        const int client_port = ntohs(client_address.sin_port);
+        client_manager->add_client(client_fd, ip_str, client_port);
 
         // 将客户端处理提交到线程池
         thread_pool->enqueue([this, client_fd]()

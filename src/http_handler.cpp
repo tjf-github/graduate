@@ -75,8 +75,12 @@ static int parse_int_param(const std::map<std::string, std::string> &params,
 
 HttpHandler::HttpHandler(std::shared_ptr<UserManager> user_mgr,
                          std::shared_ptr<FileManager> file_mgr,
-                         std::shared_ptr<SessionManager> session_mgr)
-    : user_manager(user_mgr), file_manager(file_mgr), session_manager(session_mgr) {}
+                         std::shared_ptr<SessionManager> session_mgr,
+                         std::shared_ptr<ClientManager> client_mgr)
+    : user_manager(user_mgr),
+      file_manager(file_mgr),
+      session_manager(session_mgr),
+      client_manager(client_mgr) {}
 
 // 根据请求路径和方法调用相应的处理函数，返回HTTP响应
 HttpResponse HttpHandler::handle_request(const HttpRequest &request)
@@ -111,6 +115,8 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         return handle_share_create(request);
     if (request.path.find("/api/share/download") == 0 && request.method == "GET")
         return handle_share_download(request);
+    if (request.path == "/api/server/status" && request.method == "GET")
+        return handle_server_status(request);
     if (request.path == "/api/message/send" && request.method == "POST")
         return handle_message_send(request);
     if (request.path == "/api/message/list" && request.method == "GET")
@@ -632,6 +638,46 @@ HttpResponse HttpHandler::handle_file_search(const HttpRequest &request)
     return json_response(200, "Success", json_array);
 }
 
+HttpResponse HttpHandler::handle_server_status(const HttpRequest &request)
+{
+    (void)request;
+
+    const std::vector<ClientInfo> clients =
+        client_manager ? client_manager->get_all_clients() : std::vector<ClientInfo>{};
+    const size_t active_connections =
+        client_manager ? client_manager->active_count() : 0;
+
+    std::string json_array = "[";
+    bool first = true;
+    for (const auto &client : clients)
+    {
+        if (!client.is_active)
+        {
+            continue;
+        }
+
+        if (!first)
+        {
+            json_array += ",";
+        }
+
+        JsonBuilder builder;
+        builder.add("socket_fd", client.socket_fd);
+        builder.add("ip", client.ip_address);
+        builder.add("connect_time", client.connect_time);
+        json_array += builder.build();
+        first = false;
+    }
+    json_array += "]";
+
+    HttpResponse response;
+    response.status_code = 200;
+    response.status_text = "OK";
+    response.body = "{\"active_connections\":" + std::to_string(active_connections) +
+                    ",\"clients\":" + json_array + "}";
+    return response;
+}
+
 // 消息发送接口，前端通过 POST /api/message/send 发送消息，参数包括 receiver_id 和 content
 HttpResponse HttpHandler::handle_message_send(const HttpRequest &request)
 {
@@ -677,7 +723,7 @@ HttpResponse HttpHandler::handle_message_list(const HttpRequest &request)
     if (!with_user)
         return error_response(400, "Conversation user not found");
 
-    std::vector<UserManager::Message> messages = user_manager->get_messages(user_id, with_user_id, limit);
+    std::vector<Message> messages = user_manager->get_messages(user_id, with_user_id, limit);
     user_manager->mark_messages_read(user_id, with_user_id);
 
     std::string json_array = "[";
