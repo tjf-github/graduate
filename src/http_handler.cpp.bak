@@ -670,11 +670,13 @@ HttpResponse HttpHandler::handle_server_status(const HttpRequest &request)
     }
     json_array += "]";
 
-    std::string data = "{\"active_connections\":" + std::to_string(active_connections) +
-                       ",\"clients\":" + json_array + "}";
-    return json_response(200, "Server status retrieved successfully", data);
+    HttpResponse response;
+    response.status_code = 200;
+    response.status_text = "OK";
+    response.body = "{\"active_connections\":" + std::to_string(active_connections) +
+                    ",\"clients\":" + json_array + "}";
+    return response;
 }
-
 
 // 消息发送接口，前端通过 POST /api/message/send 发送消息，参数包括 receiver_id 和 content
 HttpResponse HttpHandler::handle_message_send(const HttpRequest &request)

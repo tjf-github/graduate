@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloudisk 云盘系统</title>
+    <title>轻量级网络通信服务器 — 功能演示</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -345,12 +345,32 @@
         .table-empty {
             text-align: center;
         }
+.server-status-card {
+  border: 1px solid #bee3f8;
+  background: #ebf8ff;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+}
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #2b6cb0;
+}
+.status-body {
+  font-size: 13px;
+  color: #2d3748;
+  line-height: 1.8;
+}
     </style>
 </head>
 
 <body>
     <div class="container" id="auth-section">
-        <h1>Cloudisk 云盘</h1>
+        <h1>轻量级通信服务器</h1>
         <div id="login-form">
             <h2>用户登录</h2>
             <div class="form-group"><label>用户名</label><input type="text" id="login-username" placeholder="请输入用户名"></div>
@@ -378,7 +398,15 @@
             <div class="nav-links"><a onclick="handleLogout()">安全退出</a></div>
         </div>
 
-        <h2>我的云端文件</h2>
+        <div class="server-status-card" id="server-status-card">
+            <div class="status-header">
+                <span>🖥 服务器运行状态</span>
+                <button class="btn-auto small-btn" onclick="loadServerStatus()">刷新</button>
+            </div>
+            <div id="server-status-body" class="status-body">正在获取...</div>
+        </div>
+
+        <h2>文件传输</h2>
         <div class="profile-card">
             <div class="profile-item">用户ID：<b id="profile-id">-</b></div>
             <div class="profile-item">用户名：<b id="profile-username">-</b></div>
@@ -439,7 +467,7 @@
         </table>
 
         <div class="message-panel">
-            <h2>站内消息</h2>
+            <h2>消息通信（短轮询演示）</h2>
             <div class="message-toolbar">
                 <input id="chat-user-id" type="number" min="1" placeholder="输入对方用户 ID">
                 <button class="btn-auto" onclick="selectChatUser()">进入会话</button>
@@ -450,7 +478,7 @@
                 <div class="message-empty">暂无会话内容</div>
             </div>
             <div class="message-compose">
-                <textarea id="message-input" placeholder="输入消息内容，支持短轮询演示"></textarea>
+                <textarea id="message-input" placeholder="输入消息内容（服务器每 3 秒推送最新消息）"></textarea>
                 <button class="btn-send" onclick="sendMessage()">发送消息</button>
             </div>
         </div>
@@ -458,10 +486,10 @@
 
     <script>
         const API_BASE = '/api';
-        let currentToken = localStorage.getItem('cloudisk_token') || '';
-        let currentUser = localStorage.getItem('cloudisk_user') || '';
-        let currentUserId = Number(localStorage.getItem('cloudisk_user_id') || 0);
-        let activeChatUserId = Number(localStorage.getItem('cloudisk_chat_user_id') || 0);
+        let currentToken = localStorage.getItem('lwcs_token') || '';
+        let currentUser = localStorage.getItem('lwcs_user') || '';
+        let currentUserId = Number(localStorage.getItem('lwcs_user_id') || 0);
+        let activeChatUserId = Number(localStorage.getItem('lwcs_chat_user_id') || 0);
         let messagePollTimer = null;
 
         window.onload = () => {
@@ -472,10 +500,10 @@
                 loadFileList();
                 restoreChatState();
             } else {
-                localStorage.removeItem('cloudisk_token');
-                localStorage.removeItem('cloudisk_user');
-                localStorage.removeItem('cloudisk_user_id');
-                localStorage.removeItem('cloudisk_chat_user_id');
+                localStorage.removeItem('lwcs_token');
+                localStorage.removeItem('lwcs_user');
+                localStorage.removeItem('lwcs_user_id');
+                localStorage.removeItem('lwcs_chat_user_id');
             }
         };
 
@@ -486,6 +514,7 @@
         function showDiskSection() {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('disk-section').classList.remove('hidden');
+    loadServerStatus();
         }
         function showAuthSection() {
             document.getElementById('disk-section').classList.add('hidden');
@@ -504,10 +533,10 @@
             currentUser = '';
             currentUserId = 0;
             activeChatUserId = 0;
-            localStorage.removeItem('cloudisk_token');
-            localStorage.removeItem('cloudisk_user');
-            localStorage.removeItem('cloudisk_user_id');
-            localStorage.removeItem('cloudisk_chat_user_id');
+            localStorage.removeItem('lwcs_token');
+            localStorage.removeItem('lwcs_user');
+            localStorage.removeItem('lwcs_user_id');
+            localStorage.removeItem('lwcs_chat_user_id');
         }
         function handleUnauthorized(message = '登录已失效，请重新登录') {
             clearAuthState();
@@ -554,9 +583,9 @@
                     currentToken = data.data.token;
                     currentUser = username;
                     currentUserId = Number(data.data.id || 0);
-                    localStorage.setItem('cloudisk_token', currentToken);
-                    localStorage.setItem('cloudisk_user', username);
-                    localStorage.setItem('cloudisk_user_id', String(currentUserId || 0));
+                    localStorage.setItem('lwcs_token', currentToken);
+                    localStorage.setItem('lwcs_user', username);
+                    localStorage.setItem('lwcs_user_id', String(currentUserId || 0));
                     document.getElementById('display-user').textContent = username;
                     showDiskSection();
                     loadUserProfile();
@@ -573,7 +602,7 @@
                 if (data.code !== 200 || !data.data) return;
                 const p = data.data;
                 currentUserId = Number(p.id || 0);
-                localStorage.setItem('cloudisk_user_id', String(currentUserId || 0));
+                localStorage.setItem('lwcs_user_id', String(currentUserId || 0));
                 document.getElementById('profile-id').textContent = p.id ?? '-';
                 document.getElementById('profile-username').textContent = p.username || currentUser || '-';
                 document.getElementById('profile-email').textContent = p.email || '-';
@@ -606,7 +635,7 @@
             const tbody = document.getElementById('file-table-body');
             tbody.innerHTML = '';
             if (!Array.isArray(files) || files.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="table-empty">${isSearchResult ? '没有匹配的文件' : '您的云端空空如也'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="table-empty">${isSearchResult ? '没有匹配的文件' : '您的暂无文件'}</td></tr>`;
                 return;
             }
 
@@ -683,7 +712,7 @@
                 return;
             }
             activeChatUserId = value;
-            localStorage.setItem('cloudisk_chat_user_id', String(activeChatUserId));
+            localStorage.setItem('lwcs_chat_user_id', String(activeChatUserId));
             updateMessageStatus(`当前会话用户 ID：${activeChatUserId}，每 3 秒自动刷新`);
             loadMessages(true);
             startMessagePolling();
@@ -778,7 +807,7 @@
                 const data = await res.json();
                 if (data.code === 200) {
                     currentUser = username;
-                    localStorage.setItem('cloudisk_user', username);
+                    localStorage.setItem('lwcs_user', username);
                     document.getElementById('display-user').textContent = username;
                     showMsg('资料更新成功');
                     toggleProfileEditor(false);
@@ -1018,7 +1047,38 @@
             clearAuthState();
             location.reload();
         }
-    </script>
+    
+async function loadServerStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/server/status`, {
+      headers: { 'Authorization': `Bearer ${currentToken}` }
+    });
+    const data = await res.json();
+    const body = document.getElementById('server-status-body');
+    if (data.code === 200) {
+      let d = data.data;
+      if (typeof d === 'string') {
+        d = JSON.parse(d);
+      }
+      const rows = [
+        `活跃连接数：<b>${d.active_connections ?? '-'}</b>`,
+        `当前连接列表：${
+          Array.isArray(d.clients) && d.clients.length > 0
+            ? d.clients.map(c =>
+                `<span style="margin-right:12px;">${c.ip}（fd=${c.socket_fd}）</span>`
+              ).join('')
+            : '无'
+        }`
+      ];
+      body.innerHTML = rows.join('<br>');
+    } else {
+      body.textContent = '状态获取失败';
+    }
+  } catch (err) {
+    document.getElementById('server-status-body').textContent = '无法连接服务器';
+  }
+}
+</script>
 </body>
 
 </html>
