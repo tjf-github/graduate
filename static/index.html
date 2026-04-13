@@ -6,240 +6,520 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>轻量级网络通信服务器 — 功能演示</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f9;
-            color: #333;
+        :root {
+            --bg: #ffffff;
+            --bg-subtle: #f6f9fc;
+            --border: #e6ebf1;
+            --text: #1a1f36;
+            --text-muted: #697386;
+            --accent: #635bff;
+            --accent-dark: #4f46e5;
+            --success: #09825d;
+            --danger: #cd3d64;
+            --warning: #b06c00;
+            --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 12px 32px rgba(26, 31, 54, 0.1);
+            --radius-lg: 12px;
+            --radius-md: 10px;
+            --radius-sm: 8px;
         }
 
-        .container {
-            max-width: 960px;
-            margin: 50px auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 48px 24px;
+            background: var(--bg-subtle);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 15px;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        *:focus-visible {
+            outline: none;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: var(--accent-dark);
         }
 
         h1,
-        h2 {
+        h2,
+        h3 {
+            margin: 0;
+            color: var(--text);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        p {
+            margin: 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .container {
+            width: min(100%, 900px);
+            margin: 0 auto;
+            background: var(--bg);
+            border: 1px solid rgba(230, 235, 241, 0.9);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .panel-body {
+            padding: 24px;
+        }
+
+        .page-header {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 0 24px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand {
+            color: var(--accent);
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .welcome-text {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .nav-links a {
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .content-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .section-heading p,
+        .status-text,
+        .table-empty,
+        .message-empty {
+            color: var(--text-muted);
+        }
+
+        .auth-shell {
+            min-height: calc(100vh - 96px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-card {
+            max-width: 400px;
+        }
+
+        .auth-card .panel-body {
+            padding: 32px;
+        }
+
+        .auth-brand {
+            margin-bottom: 32px;
             text-align: center;
-            color: #007bff;
+        }
+
+        .auth-brand h1 {
+            margin-bottom: 8px;
+            color: var(--accent);
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .auth-brand p,
+        .auth-form-note {
+            color: var(--text-muted);
+        }
+
+        .auth-form h2 {
+            margin-bottom: 8px;
+            font-size: 22px;
+        }
+
+        .auth-form-note {
+            margin-bottom: 24px;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         label {
             display: block;
             margin-bottom: 8px;
-            font-weight: bold;
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 600;
         }
 
-        input {
+        input,
+        textarea {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
             border-radius: 6px;
-            box-sizing: border-box;
+            background: var(--bg);
+            color: var(--text);
+            font: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         }
 
-        input:focus {
-            border-color: #007bff;
-            outline: none;
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: rgba(99, 91, 255, 0.45);
+            box-shadow: 0 0 0 4px rgba(99, 91, 255, 0.12);
         }
 
         button {
-            width: 100%;
-            padding: 12px;
-            background-color: #007bff;
-            color: white;
-            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border: 1px solid transparent;
             border-radius: 6px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.2;
             cursor: pointer;
-            font-size: 16px;
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
         }
 
         button:hover {
-            background-color: #0056b3;
+            background: var(--accent-dark);
+            box-shadow: 0 8px 20px rgba(99, 91, 255, 0.18);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+            box-shadow: none;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .btn-auto {
+            width: auto;
+        }
+
+        .small-btn,
+        .btn-action {
+            width: auto;
+            padding: 8px 14px;
+            font-size: 13px;
+        }
+
+        .btn-send {
+            width: auto;
+            min-width: 120px;
+            align-self: stretch;
+        }
+
+        .btn-inline-spaced {
+            margin-left: 8px;
         }
 
         .btn-secondary {
-            background-color: #6c757d;
-            margin-top: 10px;
+            background: var(--bg);
+            border-color: var(--border);
+            color: var(--text);
         }
 
-        .hidden {
-            display: none;
+        .btn-secondary:hover {
+            background: #fafbff;
+            border-color: #d8e0ea;
+            color: var(--text);
+            box-shadow: none;
         }
 
-        .nav {
+        .btn-success {
+            background: var(--success);
+        }
+
+        .btn-success:hover {
+            background: #076a4c;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: #b93459;
+        }
+
+        .status-card {
+            padding: 16px;
+            border: 1px solid rgba(99, 91, 255, 0.14);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius-sm);
+            background: #f0effe;
+        }
+
+        .status-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 15px;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+            color: var(--accent);
+            font-size: 15px;
+            font-weight: 600;
         }
 
-        .nav-links a {
-            text-decoration: none;
-            color: #007bff;
-            cursor: pointer;
-            margin-left: 20px;
+        .status-body {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .card {
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg);
         }
 
         .profile-card {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 18px;
+            gap: 16px;
         }
 
         .profile-item {
+            color: var(--text-muted);
             font-size: 14px;
-            color: #555;
         }
 
         .profile-item b {
-            color: #212529;
+            display: block;
+            margin-top: 4px;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 600;
         }
 
         .storage-wrap {
             grid-column: 1 / -1;
         }
 
+        .storage-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        .storage-label b {
+            margin-top: 0;
+        }
+
         .storage-bar {
             width: 100%;
             height: 10px;
-            background: #dee2e6;
-            border-radius: 8px;
+            background: #e9edf5;
+            border-radius: 999px;
             overflow: hidden;
-            margin-top: 6px;
         }
 
         .storage-fill {
-            height: 100%;
-            background: #28a745;
             width: 0%;
-            transition: width 0.3s;
+            height: 100%;
+            background: var(--accent) !important;
+            transition: width 0.3s ease;
         }
 
         .profile-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 8px;
+            gap: 12px;
+            margin-top: 16px;
         }
 
-        .small-btn {
-            width: auto;
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-
-        .inline-share {
+        .toolbar,
+        .inline-share,
+        .flex-row,
+        .message-toolbar,
+        .message-compose {
             display: flex;
-            gap: 10px;
-            margin: 12px 0 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        th,
-        td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        th {
-            background-color: #f8f9fa;
-        }
-
-        #message {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 6px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        .notify {
-            position: fixed;
-            right: 20px;
-            top: 20px;
-            z-index: 9999;
-            min-width: 260px;
-            max-width: 420px;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, .2);
-        }
-
-        .message-panel {
-            margin-top: 28px;
-            border: 1px solid #e9ecef;
-            border-radius: 12px;
-            padding: 18px;
-            background: #fafbfc;
-        }
-
-        .message-toolbar {
-            display: flex;
-            gap: 10px;
+            gap: 12px;
             align-items: center;
-            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .message-compose {
+            align-items: flex-end;
+        }
+
+        .flex-1 {
+            flex: 1;
+        }
+
+        .toolbar-input {
+            flex: 1;
+            min-width: 220px;
         }
 
         .message-toolbar input {
             flex: 1;
         }
 
+        .message-compose textarea {
+            flex: 1;
+            min-height: 84px;
+            resize: vertical;
+        }
+
+        .table-card {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        th {
+            background: var(--bg-subtle);
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        tbody tr:hover {
+            background: #fafafa;
+        }
+
+        .table-empty {
+            padding: 28px 16px;
+            text-align: center;
+        }
+
+        .notify {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 9999;
+            min-width: 260px;
+            max-width: 420px;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--success);
+            border-radius: var(--radius-sm);
+            background: var(--bg);
+            box-shadow: var(--shadow-md);
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .notify.success {
+            border-left-color: var(--success);
+        }
+
+        .notify.error {
+            border-left-color: var(--danger);
+        }
+
+        .message-panel {
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
+        }
+
         .message-list {
             min-height: 220px;
             max-height: 360px;
             overflow-y: auto;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            background: #fff;
-            padding: 12px;
             margin-bottom: 12px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg);
         }
 
         .message-item {
+            width: fit-content;
+            max-width: min(78%, 560px);
+            margin-bottom: 12px;
             padding: 10px 12px;
+            border: 1px solid transparent;
             border-radius: 10px;
-            margin-bottom: 10px;
-            background: #eef4ff;
+            background: var(--bg-subtle);
         }
 
         .message-item.self {
-            background: #dff7e8;
+            margin-left: auto;
+            background: #f0effe;
+            border-color: rgba(99, 91, 255, 0.1);
         }
 
         .message-meta {
-            font-size: 12px;
-            color: #6c757d;
             margin-bottom: 6px;
+            color: var(--text-muted);
+            font-size: 12px;
         }
 
         .message-content {
@@ -248,238 +528,216 @@
             line-height: 1.5;
         }
 
-        .message-compose {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-
-        .message-compose textarea {
-            flex: 1;
-            min-height: 84px;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            resize: vertical;
-            font: inherit;
-        }
-
         .message-empty {
-            color: #6c757d;
-            text-align: center;
             padding: 40px 10px;
+            text-align: center;
         }
 
         .mt-10 {
             margin-top: 10px;
         }
 
-        .flex-row {
-            display: flex;
-        }
-
-        .gap-10 {
-            gap: 10px;
-        }
-
         .mb-20 {
-            margin-bottom: 20px;
-        }
-
-        .flex-1 {
-            flex: 1;
-        }
-
-        .btn-auto {
-            width: auto;
-        }
-
-        .btn-gray {
-            background-color: #6c757d;
-        }
-
-        .btn-green {
-            background-color: #28a745;
-        }
-
-        .btn-teal {
-            background-color: #17a2b8;
-        }
-
-        .btn-purple {
-            background-color: #6f42c1;
-        }
-
-        .btn-orange {
-            background-color: #fd7e14;
-        }
-
-        .btn-red {
-            background-color: #dc3545;
-        }
-
-        .btn-pad-x {
-            padding: 0 20px;
-        }
-
-        .btn-action {
-            width: auto;
-            padding: 5px 10px;
-        }
-
-        .btn-inline-spaced {
-            margin-left: 6px;
-        }
-
-        .btn-send {
-            width: 140px;
+            margin-bottom: 24px;
         }
 
         .status-text {
-            font-size: 13px;
-            color: #6c757d;
             margin-bottom: 10px;
+            font-size: 13px;
         }
 
-        .table-empty {
-            text-align: center;
+        @media (max-width: 768px) {
+            body {
+                padding: 24px 16px;
+            }
+
+            .page-header,
+            .panel-body,
+            .auth-card .panel-body {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .page-header,
+            .nav,
+            .toolbar,
+            .inline-share,
+            .message-toolbar,
+            .message-compose,
+            .flex-row,
+            .profile-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .profile-card {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-auto,
+            .small-btn,
+            .btn-action,
+            .btn-send {
+                width: 100%;
+            }
+
+            .btn-inline-spaced {
+                margin-top: 8px;
+                margin-left: 0;
+            }
+
+            .message-item {
+                max-width: 100%;
+            }
         }
-.server-status-card {
-  border: 1px solid #bee3f8;
-  background: #ebf8ff;
-  border-radius: 10px;
-  padding: 14px 18px;
-  margin-bottom: 22px;
-}
-.status-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: #2b6cb0;
-}
-.status-body {
-  font-size: 13px;
-  color: #2d3748;
-  line-height: 1.8;
-}
     </style>
 </head>
 
 <body>
-    <div class="container" id="auth-section">
-        <h1>轻量级通信服务器</h1>
-        <div id="login-form">
-            <h2>用户登录</h2>
-            <div class="form-group"><label>用户名</label><input type="text" id="login-username" placeholder="请输入用户名"></div>
-            <div class="form-group"><label>密码</label><input type="password" id="login-password" placeholder="请输入密码">
-            </div>
-            <button onclick="handleLogin()">登录</button>
-            <button class="btn-secondary" onclick="toggleAuth(false)">没有账号？前往注册</button>
-        </div>
+    <div class="auth-shell" id="auth-section">
+        <div class="container auth-card">
+            <div class="panel-body">
+                <div class="auth-brand">
+                    <h1>LightComm</h1>
+                    <p>轻量通信与文件管理控制台</p>
+                </div>
 
-        <div id="register-form" class="hidden">
-            <h2>用户注册</h2>
-            <div class="form-group"><label>用户名</label><input type="text" id="reg-username" placeholder="请设置用户名"></div>
-            <div class="form-group"><label>电子邮箱</label><input type="email" id="reg-email"
-                    placeholder="user@example.com"></div>
-            <div class="form-group"><label>密码</label><input type="password" id="reg-password" placeholder="请设置密码"></div>
-            <button onclick="handleRegister()">立即注册</button>
-            <button class="btn-secondary" onclick="toggleAuth(true)">已有账号？返回登录</button>
+                <div id="login-form" class="auth-form">
+                    <h2>用户登录</h2>
+                    <p class="auth-form-note">使用你的账号进入控制台，管理文件传输与消息通信。</p>
+                    <div class="form-group"><label>用户名</label><input type="text" id="login-username" placeholder="请输入用户名"></div>
+                    <div class="form-group"><label>密码</label><input type="password" id="login-password" placeholder="请输入密码"></div>
+                    <button class="btn-full" onclick="handleLogin()">登录</button>
+                    <button class="btn-secondary btn-full mt-10" onclick="toggleAuth(false)">没有账号？前往注册</button>
+                </div>
+
+                <div id="register-form" class="auth-form hidden">
+                    <h2>用户注册</h2>
+                    <p class="auth-form-note">创建一个新的 LightComm 账号，开始体验文件与消息能力。</p>
+                    <div class="form-group"><label>用户名</label><input type="text" id="reg-username" placeholder="请设置用户名"></div>
+                    <div class="form-group"><label>电子邮箱</label><input type="email" id="reg-email" placeholder="user@example.com"></div>
+                    <div class="form-group"><label>密码</label><input type="password" id="reg-password" placeholder="请设置密码"></div>
+                    <button class="btn-full" onclick="handleRegister()">立即注册</button>
+                    <button class="btn-secondary btn-full mt-10" onclick="toggleAuth(true)">已有账号？返回登录</button>
+                </div>
+            </div>
+            <div id="message" class="hidden notify"></div>
         </div>
-        <div id="message" class="hidden notify"></div>
     </div>
 
     <div class="container hidden" id="disk-section">
-        <div class="nav">
-            <span>欢迎回来, <b id="display-user"></b></span>
-            <div class="nav-links"><a onclick="handleLogout()">安全退出</a></div>
-        </div>
-
-        <div class="server-status-card" id="server-status-card">
-            <div class="status-header">
-                <span>🖥 服务器运行状态</span>
-                <button class="btn-auto small-btn" onclick="loadServerStatus()">刷新</button>
+        <div class="page-header">
+            <div class="brand">LightComm</div>
+            <div class="nav">
+                <span class="welcome-text">欢迎回来，<b id="display-user"></b></span>
+                <div class="nav-links"><a onclick="handleLogout()">安全退出</a></div>
             </div>
-            <div id="server-status-body" class="status-body">正在获取...</div>
         </div>
 
-        <h2>文件传输</h2>
-        <div class="profile-card">
-            <div class="profile-item">用户ID：<b id="profile-id">-</b></div>
-            <div class="profile-item">用户名：<b id="profile-username">-</b></div>
-            <div class="profile-item">邮箱：<b id="profile-email">-</b></div>
-            <div class="profile-item">注册时间：<b id="profile-created">-</b></div>
-            <div class="profile-item">会话数：<b id="profile-sessions">-</b></div>
-            <div class="profile-item">超时策略：<b id="profile-timeout">-</b></div>
-            <div class="storage-wrap profile-item">存储使用：<b id="profile-storage">-</b>
-                <div class="storage-bar">
-                    <div class="storage-fill" id="profile-storage-fill"></div>
-                </div>
-                <div class="profile-actions">
-                    <button class="small-btn" onclick="toggleProfileEditor(true)">修改用户名/邮箱</button>
-                </div>
-                <div id="profile-editor" class="hidden mt-10">
-                    <div class="flex-row gap-10">
-                        <input id="edit-username" type="text" placeholder="新用户名">
-                        <input id="edit-email" type="email" placeholder="新邮箱">
-                        <button class="small-btn" onclick="submitProfileUpdate()">保存</button>
-                        <button class="small-btn btn-gray"
-                            onclick="toggleProfileEditor(false)">取消</button>
+        <div class="panel-body">
+            <div class="content-stack">
+                <div class="server-status-card status-card" id="server-status-card">
+                    <div class="status-header">
+                        <span>服务器运行状态</span>
+                        <button class="btn-secondary btn-auto small-btn" onclick="loadServerStatus()">刷新</button>
                     </div>
+                    <div id="server-status-body" class="status-body">正在获取...</div>
                 </div>
-            </div>
-        </div>
 
-        <div class="inline-share">
-            <input id="share-link-input" type="text" placeholder="粘贴分享链接，例如 /api/share/download?code=XXXX">
-            <button class="btn-auto" onclick="downloadByShareLink()">下载分享文件</button>
-        </div>
+                <section>
+                    <div class="section-heading">
+                        <div>
+                            <h2>文件传输</h2>
+                            <p>查看账户信息、上传文件并管理分享链接。</p>
+                        </div>
+                    </div>
 
-        <div class="flex-row gap-10 mb-20">
-            <input type="file" id="file-selector" class="flex-1">
-            <button class="btn-auto btn-pad-x" onclick="handleUpload()">上传文件</button>
-            <button class="btn-auto btn-green" onclick="loadFileList()">刷新</button>
-        </div>
+                    <div class="card profile-card">
+                        <div class="profile-item">用户 ID<b id="profile-id">-</b></div>
+                        <div class="profile-item">用户名<b id="profile-username">-</b></div>
+                        <div class="profile-item">邮箱地址<b id="profile-email">-</b></div>
+                        <div class="profile-item">注册时间<b id="profile-created">-</b></div>
+                        <div class="profile-item">活跃会话数<b id="profile-sessions">-</b></div>
+                        <div class="profile-item">超时策略<b id="profile-timeout">-</b></div>
+                        <div class="storage-wrap profile-item">
+                            <div class="storage-label">
+                                <span>存储使用情况</span>
+                                <b id="profile-storage">-</b>
+                            </div>
+                            <div class="storage-bar">
+                                <div class="storage-fill" id="profile-storage-fill"></div>
+                            </div>
+                            <div class="profile-actions">
+                                <button class="btn-secondary small-btn" onclick="toggleProfileEditor(true)">修改用户名/邮箱</button>
+                            </div>
+                            <div id="profile-editor" class="hidden mt-10">
+                                <div class="flex-row">
+                                    <input id="edit-username" type="text" placeholder="新用户名">
+                                    <input id="edit-email" type="email" placeholder="新邮箱">
+                                    <button class="small-btn" onclick="submitProfileUpdate()">保存</button>
+                                    <button class="small-btn btn-secondary" onclick="toggleProfileEditor(false)">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="flex-row gap-10 mb-20">
-            <input id="file-search-input" type="text" placeholder="按文件名搜索，例如 report 或 .pdf" class="flex-1">
-            <button class="btn-auto btn-teal" onclick="searchFiles()">搜索</button>
-            <button class="btn-auto btn-gray" onclick="resetFileSearch()">清空搜索</button>
-        </div>
+                    <div class="toolbar mb-20 mt-10">
+                        <input id="share-link-input" class="toolbar-input" type="text" placeholder="粘贴分享链接，例如 /api/share/download?code=XXXX">
+                        <button class="btn-secondary btn-auto" onclick="downloadByShareLink()">下载分享文件</button>
+                    </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>文件名</th>
-                    <th>大小</th>
-                    <th>上传时间</th>
-                    <th>管理操作</th>
-                </tr>
-            </thead>
-            <tbody id="file-table-body">
-                <tr>
-                    <td colspan="4" class="table-empty">正在加载文件列表...</td>
-                </tr>
-            </tbody>
-        </table>
+                    <div class="toolbar mb-20">
+                        <input type="file" id="file-selector" class="flex-1">
+                        <button class="btn-auto" onclick="handleUpload()">上传文件</button>
+                        <button class="btn-secondary btn-auto" onclick="loadFileList()">刷新</button>
+                    </div>
 
-        <div class="message-panel">
-            <h2>消息通信（短轮询演示）</h2>
-            <div class="message-toolbar">
-                <input id="chat-user-id" type="number" min="1" placeholder="输入对方用户 ID">
-                <button class="btn-auto" onclick="selectChatUser()">进入会话</button>
-                <button class="btn-auto btn-green" onclick="loadMessages(true)">刷新消息</button>
-            </div>
-            <div id="message-status" class="status-text">请选择一个用户开始聊天</div>
-            <div id="message-list" class="message-list">
-                <div class="message-empty">暂无会话内容</div>
-            </div>
-            <div class="message-compose">
-                <textarea id="message-input" placeholder="输入消息内容（服务器每 3 秒推送最新消息）"></textarea>
-                <button class="btn-send" onclick="sendMessage()">发送消息</button>
+                    <div class="toolbar mb-20">
+                        <input id="file-search-input" type="text" placeholder="按文件名搜索，例如 report 或 .pdf" class="flex-1">
+                        <button class="btn-secondary btn-auto" onclick="searchFiles()">搜索</button>
+                        <button class="btn-secondary btn-auto" onclick="resetFileSearch()">清空搜索</button>
+                    </div>
+
+                    <div class="card table-card">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>文件名</th>
+                                    <th>大小</th>
+                                    <th>上传时间</th>
+                                    <th>管理操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="file-table-body">
+                                <tr>
+                                    <td colspan="4" class="table-empty">正在加载文件列表...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="message-panel">
+                    <div class="section-heading">
+                        <div>
+                            <h2>消息通信</h2>
+                            <p>短轮询会话面板，适合演示双向消息传递。</p>
+                        </div>
+                    </div>
+                    <div class="message-toolbar">
+                        <input id="chat-user-id" type="number" min="1" placeholder="输入对方用户 ID">
+                        <button class="btn-auto" onclick="selectChatUser()">进入会话</button>
+                        <button class="btn-secondary btn-auto" onclick="loadMessages(true)">刷新消息</button>
+                    </div>
+                    <div id="message-status" class="status-text">请选择一个用户开始聊天</div>
+                    <div id="message-list" class="message-list">
+                        <div class="message-empty">暂无会话内容</div>
+                    </div>
+                    <div class="message-compose">
+                        <textarea id="message-input" placeholder="输入消息内容（服务器每 3 秒推送最新消息）"></textarea>
+                        <button class="btn-send" onclick="sendMessage()">发送消息</button>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -655,22 +913,22 @@
 
                 const downloadBtn = document.createElement('button');
                 downloadBtn.textContent = '下载';
-                downloadBtn.className = 'btn-action btn-green';
+                downloadBtn.className = 'btn-action btn-success';
                 downloadBtn.onclick = () => downloadFile(f.id, displayName);
 
                 const renameBtn = document.createElement('button');
                 renameBtn.textContent = '重命名';
-                renameBtn.className = 'btn-action btn-orange btn-inline-spaced';
+                renameBtn.className = 'btn-action btn-secondary btn-inline-spaced';
                 renameBtn.onclick = () => renameFile(f.id, displayName);
 
                 const shareBtn = document.createElement('button');
                 shareBtn.textContent = '分享';
-                shareBtn.className = 'btn-action btn-purple btn-inline-spaced';
+                shareBtn.className = 'btn-action btn-secondary btn-inline-spaced';
                 shareBtn.onclick = () => createShare(f.id);
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = '删除';
-                deleteBtn.className = 'btn-action btn-red btn-inline-spaced';
+                deleteBtn.className = 'btn-action btn-danger btn-inline-spaced';
                 deleteBtn.onclick = () => deleteFile(f.id);
 
                 actionTd.appendChild(downloadBtn);
