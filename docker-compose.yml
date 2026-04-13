@@ -1,18 +1,15 @@
-version: '3.8'
-
 services:
-  # MySQL数据库
   mysql:
     image: mysql:8.0
     container_name: cloudisk_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: your_password
-      MYSQL_DATABASE: cloudisk
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me}
+      MYSQL_DATABASE: ${DB_NAME:-cloudisk}
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATE_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "${DB_EXPOSE_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -24,7 +21,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # 云盘服务器
   lightweight_comm_server:
     build:
       context: .
@@ -35,14 +31,16 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      SERVER_PORT: 8080
+      SERVER_PORT: ${SERVER_PORT:-8080}
       STORAGE_PATH: /app/storage
+      STATIC_DIR: /app/static
       DB_HOST: mysql
-      DB_USER: root
-      DB_PASSWORD: your_password
-      DB_NAME: cloudisk
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me}
+      DB_NAME: ${DB_NAME:-cloudisk}
     ports:
-      - "8080:8080"
+      - "${SERVER_PORT:-8080}:8080"
     volumes:
       - storage_data:/app/storage
     networks:

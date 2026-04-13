@@ -5,6 +5,8 @@
 #include <random>
 #include <chrono>
 #include <iomanip>
+#include <cstdlib>
+#include <vector>
 #include "json_helper.h"
 #include "logger.h"
 
@@ -69,6 +71,29 @@ static int parse_int_param(const std::map<std::string, std::string> &params,
     }
 }
 
+static std::string build_static_path(const std::string &request_path)
+{
+    const std::string static_root = std::getenv("STATIC_DIR") ? std::getenv("STATIC_DIR") : "static";
+    const bool is_index = request_path == "/" || request_path == "/index.html";
+    const std::string relative_path = is_index ? "index.html" : request_path.substr(8);
+
+    std::vector<std::string> candidates = {
+        static_root + "/" + relative_path,
+        "../" + static_root + "/" + relative_path,
+        "./" + static_root + "/" + relative_path};
+
+    for (const auto &candidate : candidates)
+    {
+        std::ifstream file(candidate, std::ios::binary);
+        if (file.is_open())
+        {
+            return candidate;
+        }
+    }
+
+    return "";
+}
+
 // ---------------------------------------------------------
 // 1. HttpHandler 的实现
 // ---------------------------------------------------------
@@ -126,7 +151,7 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
     std::string file_path;
     if (request.path == "/" || request.path == "/index.html")
     {
-        file_path = "static/index.html"; // 尝试相对路径
+        file_path = build_static_path(request.path);
     }
     else
     {
@@ -135,10 +160,10 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         {
             return error_response(403, "Forbidden");
         }
-        // 尝试直接映射 static 目录下的文件
-        if (request.path.substr(0, 8) == "/static/")
+
+        if (request.path.rfind("/static/", 0) == 0)
         {
-            file_path = request.path.substr(1); // 去掉开头的 /
+            file_path = build_static_path(request.path);
         }
     }
 
@@ -146,12 +171,6 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
     if (!file_path.empty())
     {
         std::ifstream file(file_path, std::ios::binary);
-        if (!file.is_open())
-        {
-            // 尝试上级目录（如果是在 build 目录运行）
-            file.open("../" + file_path, std::ios::binary);
-        }
-
         if (file.is_open())
         {
             std::ostringstream ss;

@@ -53,20 +53,25 @@ mysql -u root -p < init.sql
 
 ### 3. 配置运行环境
 
-项目支持通过环境变量覆盖默认配置：
+项目支持通过环境变量覆盖默认配置，也可以直接复制 `.env.example` 为 `.env` 后统一维护：
 
 ```bash
+cp .env.example .env
 export SERVER_PORT=8080
 export STORAGE_PATH=./storage
+export STATIC_DIR=./static
 export DB_HOST=localhost
-export DB_USER=tjf
-export DB_PASSWORD=tjf927701
+export DB_PORT=3306
+export DB_USER=cloudisk
+export DB_PASSWORD=change_me
 export DB_NAME=cloudisk
 ```
 
 说明：
 - 如果不设置环境变量，程序会使用 [src/main.cpp](/home/tjf/graduate/src/main.cpp) 中的默认值。
 - `STORAGE_PATH` 指向文件实际落盘目录。
+- `STATIC_DIR` 用于部署时显式指定静态资源目录，Docker 场景下建议保持 `/app/static`。
+- `DB_PORT` 现在也支持通过环境变量覆盖，便于容器或云数据库部署。
 
 ### 4. 编译
 
@@ -92,6 +97,20 @@ http://localhost:8080
 ```text
 http://localhost:8080/
 ```
+
+## Docker 部署
+
+仓库已经内置 `Dockerfile` 和 `docker-compose.yml`，并补齐了容器运行所需的静态资源复制与环境变量模板：
+
+```bash
+cp .env.example .env
+docker compose up --build -d
+```
+
+说明：
+- `docker-compose.yml` 支持通过 `.env` 覆盖 `SERVER_PORT`、`DB_NAME`、`MYSQL_ROOT_PASSWORD` 等参数。
+- 应用容器内默认使用 `STATIC_DIR=/app/static`，前端页面可直接通过根路径访问。
+- 文件存储会落到 Compose volume `storage_data` 中。
 
 ## 数据库概览
 

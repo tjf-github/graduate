@@ -119,7 +119,8 @@ sudo mysql -u root -p < init.sql
 ### 步骤8: 配置环境
 
 ```bash
-# 创建配置文件
+cd /opt/cloudisk
+cp .env.example .env
 sudo nano /opt/cloudisk/.env
 ```
 
@@ -127,7 +128,9 @@ sudo nano /opt/cloudisk/.env
 ```bash
 SERVER_PORT=8080
 STORAGE_PATH=/opt/cloudisk/storage
+STATIC_DIR=/opt/cloudisk/static
 DB_HOST=localhost
+DB_PORT=3306
 DB_USER=cloudisk
 DB_PASSWORD=your_strong_password
 DB_NAME=cloudisk
@@ -145,23 +148,20 @@ sudo chmod 755 /opt/cloudisk/storage
 sudo nano /etc/systemd/system/cloudisk.service
 ```
 
-添加以下内容:
+仓库也提供了模板文件 [deploy/cloudisk.service](/home/tjf/graduatenew/graduate/deploy/cloudisk.service)，可直接复制到系统目录后微调路径。完整内容如下:
 ```ini
 [Unit]
-Description=Cloud Disk Server
+Description=Lightweight Comm Server
 After=network.target mysql.service
 Wants=mysql.service
 
 [Service]
 Type=simple
-User=root
 WorkingDirectory=/opt/cloudisk
 EnvironmentFile=/opt/cloudisk/.env
 ExecStart=/opt/cloudisk/build/lightweight_comm_server
 Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -205,11 +205,11 @@ sudo ufw status
 sudo nano /etc/nginx/sites-available/cloudisk
 ```
 
-添加以下内容:
+仓库也提供了模板文件 [deploy/nginx.lightcomm.conf](/home/tjf/graduatenew/graduate/deploy/nginx.lightcomm.conf)，可直接复制后修改域名。示例如下:
 ```nginx
 server {
     listen 80;
-    server_name your_domain.com;  # 修改为你的域名
+    server_name your_domain.com;
     
     # 最大上传大小
     client_max_body_size 100M;
@@ -220,11 +220,9 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # 超时设置
-        proxy_connect_timeout 300;
-        proxy_send_timeout 300;
-        proxy_read_timeout 300;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
     }
 }
 ```
@@ -248,17 +246,32 @@ sudo certbot --nginx -d your_domain.com
 ### 步骤13: 测试部署
 
 ```bash
-# 测试服务器响应
-curl http://localhost:8080/api/user/info
+# 先测试静态首页是否正常
+curl -I http://localhost:8080/
 
-# 如果配置了Nginx
-curl http://your_domain.com/api/user/info
+# 如果配置了 Nginx
+curl -I http://your_domain.com/
 
 # 从外部测试
 curl http://your_server_ip:8080/api/register \
   -H "Content-Type: application/json" \
   -d '{"username":"testuser","email":"test@test.com","password":"test123"}'
 ```
+
+## Docker Compose 部署
+
+如果你希望用最少步骤启动整套环境，可以直接使用仓库自带的 Compose 编排：
+
+```bash
+cd /opt/cloudisk
+cp .env.example .env
+docker compose up --build -d
+```
+
+说明：
+- MySQL 会自动执行 `init.sql`
+- 应用镜像会自动包含 `static/` 目录
+- 持久化数据分别写入 `mysql_data` 和 `storage_data`
 
 ## Docker部署方式（替代方案）
 

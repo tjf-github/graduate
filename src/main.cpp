@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
     // 默认配置
     int port = 8080;
     std::string storage_path = "./storage";
+    std::string static_dir = "static";
 
     DBConfig db_config;
     db_config.host = "localhost";
@@ -65,6 +66,16 @@ int main(int argc, char *argv[])
         db_config.database = env_db_name;
     }
 
+    if (const char *env_db_port = std::getenv("DB_PORT"))
+    {
+        db_config.port = static_cast<unsigned int>(std::atoi(env_db_port));
+    }
+
+    if (const char *env_static_dir = std::getenv("STATIC_DIR"))
+    {
+        static_dir = env_static_dir;
+    }
+
     // 设置信号处理
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -74,6 +85,7 @@ int main(int argc, char *argv[])
     std::cout << "==================================" << std::endl;
     std::cout << "Port: " << port << std::endl;
     std::cout << "Storage: " << storage_path << std::endl;
+    std::cout << "Static Dir: " << static_dir << std::endl;
     std::cout << "Database: " << db_config.host << ":" << db_config.port
               << "/" << db_config.database << std::endl;
     std::cout << "==================================" << std::endl;
