@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username),
     INDEX idx_email (email)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- 文件表
 CREATE TABLE IF NOT EXISTS files (
@@ -30,15 +30,12 @@ CREATE TABLE IF NOT EXISTS files (
     mime_type VARCHAR(100),
     upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    --分享码 
     share_code VARCHAR(32) UNIQUE,
-    --外键约束，用户删除时级联删除文件 
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    --索引优化查询性能 
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id),
     INDEX idx_filename (original_filename),
     INDEX idx_upload_date (upload_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- 聊天消息表
 CREATE TABLE IF NOT EXISTS messages (
@@ -48,8 +45,8 @@ CREATE TABLE IF NOT EXISTS messages (
     content TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users (id) ON DELETE CASCADE,
     INDEX idx_receiver (receiver_id),
     INDEX idx_conversation (sender_id, receiver_id)
 );
@@ -62,11 +59,11 @@ CREATE TABLE IF NOT EXISTS share_links (
     expire_date TIMESTAMP NULL,
     access_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
     INDEX idx_share_code (share_code),
     INDEX idx_file_id (file_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- 文件夹表（可选功能）
 CREATE TABLE IF NOT EXISTS folders (
@@ -76,33 +73,47 @@ CREATE TABLE IF NOT EXISTS folders (
     parent_id INT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_id) REFERENCES folders(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES folders (id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id),
     INDEX idx_parent_id (parent_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- 插入测试用户（密码：test123，哈希值为SHA256）
-INSERT INTO users (username, email, password_hash, storage_used, storage_limit) 
-VALUES ('testuser', 'test@example.com', 
+INSERT INTO
+    users (
+        username,
+        email,
+        password_hash,
+        storage_used,
+        storage_limit
+    )
+VALUES (
+        'testuser',
+        'test@example.com',
         'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae',
-        0, 10737418240)
-ON DUPLICATE KEY UPDATE username=username;
+        0,
+        10737418240
+    )
+ON DUPLICATE KEY UPDATE
+    username = username;
 
 -- 显示表结构
 SHOW TABLES;
+
 DESCRIBE users;
+
 DESCRIBE files;
 
 CREATE TABLE IF NOT EXISTS messages (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    sender_id    INT        NOT NULL,
-    receiver_id  INT        NOT NULL,
-    content      TEXT       NOT NULL,
-    is_read      TINYINT(1) DEFAULT 0,
-    created_at   TIMESTAMP  DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_id)   REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_receiver     (receiver_id),
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    content TEXT NOT NULL,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users (id) ON DELETE CASCADE,
+    INDEX idx_receiver (receiver_id),
     INDEX idx_conversation (sender_id, receiver_id)
 );

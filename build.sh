@@ -52,17 +52,11 @@ install_libraries() {
 compile_project() {
     echo -e "${YELLOW}开始编译...${NC}"
     
-    # 创建构建目录
-    if [ -d "build" ]; then
-        rm -rf build
-    fi
+    rm -rf build
     mkdir build
     cd build
     
-    # CMake配置
     cmake ..
-    
-    # 编译
     make -j$(nproc)
     
     cd ..
@@ -93,14 +87,14 @@ create_config() {
     echo -e "${YELLOW}创建配置文件...${NC}"
     
     cat > .env << EOF
-# 服务器配置
-SERVER_PORT=8080
+# server config
+SERVER_PORT=9090
 STORAGE_PATH=./storage
 
-# 数据库配置
+# database config
 DB_HOST=localhost
 DB_USER=root
-DB_PASSWORD=your_password
+DB_PASSWORD=Abc@123456
 DB_NAME=cloudisk
 EOF
     
@@ -118,13 +112,15 @@ create_storage() {
     echo -e "${GREEN}✓ 存储目录创建完成${NC}"
 }
 
-# 运行服务器
+# 运行服务器（修复点在这里）
 run_server() {
     echo -e "${YELLOW}启动服务器...${NC}"
     
-    # 加载环境变量
+    # 正确加载 .env（忽略注释）
     if [ -f ".env" ]; then
-        export $(cat .env | xargs)
+        set -a
+        source .env
+        set +a
     fi
     
     ./build/lightweight_comm_server
@@ -146,22 +142,11 @@ show_menu() {
     read -p "请输入选项 [0-7]: " choice
     
     case $choice in
-        1)
-            install_libraries
-            ;;
-        2)
-            compile_project
-            ;;
-        3)
-            init_database
-            ;;
-        4)
-            create_config
-            create_storage
-            ;;
-        5)
-            run_server
-            ;;
+        1) install_libraries ;;
+        2) compile_project ;;
+        3) init_database ;;
+        4) create_config; create_storage ;;
+        5) run_server ;;
         6)
             install_libraries
             compile_project
@@ -171,13 +156,11 @@ show_menu() {
             echo -e "${GREEN}========================================${NC}"
             echo -e "${GREEN}部署完成！${NC}"
             echo -e "${GREEN}========================================${NC}"
-            echo -e "运行 './build.sh' 并选择选项5 启动服务器"
             ;;
         7)
             echo -e "${YELLOW}使用Docker Compose部署...${NC}"
             docker-compose up --build -d
             echo -e "${GREEN}✓ Docker部署完成${NC}"
-            echo -e "服务器运行在: http://localhost:8080"
             ;;
         0)
             echo "退出"

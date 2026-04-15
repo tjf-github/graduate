@@ -80,7 +80,8 @@ cd cloudisk
 **方法2: 使用SCP**
 ```bash
 # 在本地执行
-scp -r /path/to/cloudisk root@:/opt/
+scp -r  tjf@47.108.24.3:22:/deployment/cloudisk
+
 ```
 
 **方法3: 使用rsync**
