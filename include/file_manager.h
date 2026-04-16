@@ -6,6 +6,7 @@
 #include <memory>
 // C++17引入的std::optional，用于表示可能不存在的值
 #include <optional>
+#include <ctime>
 #include "database.h"
 
 struct FileInfo
@@ -27,6 +28,36 @@ struct ShareInfo
     int owner_user_id;
     int file_id;
     std::string created_at;
+};
+
+// 上传会话结构体
+struct UploadSession {
+    std::string upload_id;
+    int user_id;
+    std::string filename;
+    long long total_size;
+    int total_chunks;
+    std::string mime_type;
+};
+ 
+// 分块信息结构体
+struct ChunkInfo {
+    std::string upload_id;
+    int chunk_index;
+    std::string chunk_hash;
+    long long chunk_size;
+    std::string status;
+};
+
+// 上传进度结构体
+struct UploadProgress {
+    std::string upload_id;
+    int total_chunks;
+    int completed_chunks;
+    long long total_size;
+    long long uploaded_size;
+    double progress;
+    std::vector<int> failed_chunks;
 };
 
 // 文件管理类，需要对mysql和路径（有了路径就知道文件）进行封装，提供文件上传、下载、删除、重命名、搜索等功能
@@ -96,5 +127,6 @@ private:
     // 创建用户目录
     bool create_user_directory(int user_id);
 };
+
 
 #endif // FILE_MANAGER_H

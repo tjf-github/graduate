@@ -47,10 +47,9 @@ add_executable(lightweight_comm_server ${SOURCES})
 
 # 链接库 (删掉 uroot)
 target_link_libraries(lightweight_comm_server
-    Threads::Threads
-    mysqlclient
-    OpenSSL::SSL
-    OpenSSL::Crypto
+    PRIVATE
+    ${MYSQL_LIBRARIES}
+    pthread
     uuid
     stdc++fs
 )
