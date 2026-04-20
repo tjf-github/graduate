@@ -333,7 +333,6 @@ HttpResponse HttpHandler::handle_user_info(const HttpRequest &request)
     builder.add("storage_used", user->storage_used);
     builder.add("storage_limit", user->storage_limit);
     builder.add("created_at", user->created_at);
-    builder.add("active_sessions", static_cast<int>(session_manager->session_count()));
     builder.add("timeout_minutes", static_cast<int>(session_manager->get_timeout_minutes()));
 
     return json_response(200, "User info", builder.build());

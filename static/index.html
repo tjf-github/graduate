@@ -657,7 +657,6 @@
                         <div class="profile-item">用户名<b id="profile-username">-</b></div>
                         <div class="profile-item">邮箱地址<b id="profile-email">-</b></div>
                         <div class="profile-item">注册时间<b id="profile-created">-</b></div>
-                        <div class="profile-item">活跃会话数<b id="profile-sessions">-</b></div>
                         <div class="profile-item">超时策略<b id="profile-timeout">-</b></div>
                         <div class="storage-wrap profile-item">
                             <div class="storage-label">
@@ -865,7 +864,6 @@
                 document.getElementById('profile-username').textContent = p.username || currentUser || '-';
                 document.getElementById('profile-email').textContent = p.email || '-';
                 document.getElementById('profile-created').textContent = p.created_at || '-';
-                document.getElementById('profile-sessions').textContent = p.active_sessions ?? '-';
                 document.getElementById('profile-timeout').textContent = p.timeout_minutes ? `${p.timeout_minutes} 分钟` : '-';
                 const used = Number(p.storage_used || 0), limit = Number(p.storage_limit || 0);
                 document.getElementById('profile-storage').textContent = `${formatBytes(used)} / ${formatBytes(limit)}`;

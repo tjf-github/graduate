@@ -156,6 +156,22 @@ std::optional<FileInfo> FileManager::upload_file(int user_id,
     }
 
     int file_id = db->last_insert_id();
+
+    std::string update_storage_query =
+        "UPDATE users SET storage_used = storage_used + " +
+        std::to_string(size) + " WHERE id = " + std::to_string(user_id);
+
+    if (!db->execute(update_storage_query))
+    {
+        std::string rollback_query =
+            "DELETE FROM files WHERE id = " + std::to_string(file_id) +
+            " AND user_id = " + std::to_string(user_id);
+        db->execute(rollback_query);
+        db_pool->return_connection(db);
+        unlink(full_path.c_str());
+        return std::nullopt;
+    }
+
     db_pool->return_connection(db);
 
     // 构建返回信息
@@ -311,6 +327,15 @@ bool FileManager::delete_file(int file_id, int user_id)
         " AND user_id = " + std::to_string(user_id);
 
     bool success = db->execute(query);
+
+    if (success)
+    {
+        std::string update_storage_query =
+            "UPDATE users SET storage_used = GREATEST(0, storage_used - " +
+            std::to_string(file_info->file_size) + ") WHERE id = " + std::to_string(user_id);
+        success = db->execute(update_storage_query);
+    }
+
     db_pool->return_connection(db);
 
     return success;
