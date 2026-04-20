@@ -77,6 +77,8 @@ private:
     HttpResponse json_response(int code, const std::string &message,
                                const std::string &data = "");
     HttpResponse error_response(int code, const std::string &message);
+    std::string generate_share_code();
+    std::string build_expire_date(int expire_hours) const;
 };
 
 // 简单的HTTP请求解析器和响应构建器，支持基本的HTTP协议格式

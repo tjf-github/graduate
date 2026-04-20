@@ -1235,6 +1235,13 @@
                     headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ file_id: fileId })
                 });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    showMsg(text || '分享接口调用失败', true);
+                    return;
+                }
+
                 const data = await res.json();
                 if (data.code === 200 && data.data) {
                     const shareUrl = data.data.share_url;
