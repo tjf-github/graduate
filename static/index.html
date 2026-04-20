@@ -362,8 +362,22 @@
             color: var(--text-muted);
         }
 
+        .storage-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .storage-label b {
             margin-top: 0;
+        }
+
+        .storage-percent {
+            min-width: 44px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            text-align: right;
         }
 
         .storage-bar {
@@ -379,6 +393,18 @@
             height: 100%;
             background: var(--accent) !important;
             transition: width 0.3s ease;
+        }
+
+        .storage-fill.is-safe {
+            background: #28a745 !important;
+        }
+
+        .storage-fill.is-warn {
+            background: #ffc107 !important;
+        }
+
+        .storage-fill.is-danger {
+            background: #dc3545 !important;
         }
 
         .profile-actions {
@@ -661,7 +687,10 @@
                         <div class="storage-wrap profile-item">
                             <div class="storage-label">
                                 <span>存储使用情况</span>
-                                <b id="profile-storage">-</b>
+                                <div class="storage-meta">
+                                    <span class="storage-percent" id="profile-storage-percent">0%</span>
+                                    <b id="profile-storage">-</b>
+                                </div>
                             </div>
                             <div class="storage-bar">
                                 <div class="storage-fill" id="profile-storage-fill"></div>
@@ -688,7 +717,7 @@
                     <div class="toolbar mb-20">
                         <input type="file" id="file-selector" class="flex-1">
                         <button class="btn-auto" onclick="handleUpload()">上传文件</button>
-                        <button class="btn-secondary btn-auto" onclick="loadFileList()">刷新</button>
+                        <button class="btn-secondary btn-auto" onclick="resetUploadSelection()">清空选择</button>
                     </div>
 
                     <div class="toolbar mb-20">
@@ -865,13 +894,22 @@
                 document.getElementById('profile-email').textContent = p.email || '-';
                 document.getElementById('profile-created').textContent = p.created_at || '-';
                 document.getElementById('profile-timeout').textContent = p.timeout_minutes ? `${p.timeout_minutes} 分钟` : '-';
-                const used = Number(p.storage_used || 0), limit = Number(p.storage_limit || 0);
-                document.getElementById('profile-storage').textContent = `${formatBytes(used)} / ${formatBytes(limit)}`;
-                const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-                const fill = document.getElementById('profile-storage-fill');
-                fill.style.width = `${percent}%`;
-                fill.style.background = percent > 90 ? '#dc3545' : percent > 75 ? '#ffc107' : '#28a745';
+                updateStorageDisplay(Number(p.storage_used || 0), Number(p.storage_limit || 0));
             } catch (e) { console.error('用户资料加载失败', e); }
+        }
+
+        function updateStorageDisplay(used, limit) {
+            document.getElementById('profile-storage').textContent = `${formatBytes(used)} / ${formatBytes(limit)}`;
+            const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+            document.getElementById('profile-storage-percent').textContent = `${percent}%`;
+
+            const fill = document.getElementById('profile-storage-fill');
+            fill.style.width = `${percent}%`;
+            fill.classList.remove('is-safe', 'is-warn', 'is-danger');
+
+            if (percent > 90) fill.classList.add('is-danger');
+            else if (percent > 75) fill.classList.add('is-warn');
+            else fill.classList.add('is-safe');
         }
 
         function restoreChatState() {
@@ -1119,6 +1157,11 @@
             loadFileList();
         }
 
+        function resetUploadSelection() {
+            const fileInput = document.getElementById('file-selector');
+            fileInput.value = '';
+        }
+
         async function handleUpload() {
             const fileInput = document.getElementById('file-selector');
             if (fileInput.files.length === 0) return alert('请先选择文件');
@@ -1137,6 +1180,7 @@
                             const data = JSON.parse(xhr.responseText || '{}');
                             if (data.code === 200) {
                                 showMsg('文件上传成功');
+                                fileInput.value = '';
                                 loadUserProfile();
                                 loadFileList();
                                 resolve();

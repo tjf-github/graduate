@@ -1,3 +1,0 @@
-/home/tjf/graduatenew/graduate/build/CMakeFiles/lightweight_comm_server.dir
-/home/tjf/graduatenew/graduate/build/CMakeFiles/edit_cache.dir
-/home/tjf/graduatenew/graduate/build/CMakeFiles/rebuild_cache.dir
