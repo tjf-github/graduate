@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 查找必要的库
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_library(MYSQLCLIENT_LIB mysqlclient PATHS ${MYSQL_CONNECTOR_LIB} REQUIRED)
 
 # MySQL连接器路径 (根据实际安装路径调整)
 set(MYSQL_CONNECTOR_INCLUDE "/usr/include/mysql")
@@ -48,8 +49,10 @@ add_executable(lightweight_comm_server ${SOURCES})
 # 链接库 (删掉 uroot)
 target_link_libraries(lightweight_comm_server
     PRIVATE
-    ${MYSQL_LIBRARIES}
-    pthread
+    ${MYSQLCLIENT_LIB}
+    Threads::Threads
+    OpenSSL::Crypto
+    OpenSSL::SSL
     uuid
     stdc++fs
 )
