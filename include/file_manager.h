@@ -31,7 +31,8 @@ struct ShareInfo
 };
 
 // 上传会话结构体
-struct UploadSession {
+struct UploadSession
+{
     std::string upload_id;
     int user_id;
     std::string filename;
@@ -39,9 +40,10 @@ struct UploadSession {
     int total_chunks;
     std::string mime_type;
 };
- 
+
 // 分块信息结构体
-struct ChunkInfo {
+struct ChunkInfo
+{
     std::string upload_id;
     int chunk_index;
     std::string chunk_hash;
@@ -50,7 +52,8 @@ struct ChunkInfo {
 };
 
 // 上传进度结构体
-struct UploadProgress {
+struct UploadProgress
+{
     std::string upload_id;
     int total_chunks;
     int completed_chunks;
@@ -66,6 +69,27 @@ class FileManager
 public:
     FileManager(std::shared_ptr<DBConnectionPool> pool,
                 const std::string &storage_path);
+
+    //  ── 大文件分块上传 ──────────────────────────────────
+    std::optional<UploadSession> create_upload_session(
+        int user_id,
+        const std::string &filename,
+        long long total_size,
+        int total_chunks,
+        const std::string &mime_type);
+
+    bool save_chunk(
+        const std::string &upload_id,
+        int chunk_index,
+        const std::string &expected_hash,
+        const char *data,
+        size_t size);
+
+    UploadProgress get_upload_progress(const std::string &upload_id, int user_id);
+
+    std::optional<FileInfo> complete_upload(
+        const std::string &upload_id,
+        int user_id);
 
     // 文件上传
     std::optional<FileInfo> upload_file(int user_id,
@@ -126,7 +150,13 @@ private:
 
     // 创建用户目录
     bool create_user_directory(int user_id);
-};
 
+    // 临时目录路径
+    std::string get_temp_dir(const std::string &upload_id);
+    // 合并所有.part文件
+    bool merge_chunks(const std::string &upload_id,
+                      int total_chunks,
+                      const std::string &dest_path);
+};
 
 #endif // FILE_MANAGER_H

@@ -86,6 +86,15 @@ bool FileManager::create_user_directory(int user_id)
     return mkdir(user_dir.c_str(), 0755) == 0 || errno == EEXIST;
 }
 
+std::optional<UploadSession> create_upload_session(
+    int user_id,
+    const std::string &filename,
+    long long total_size,
+    int total_chunks,
+    const std::string &mime_type)
+{
+}
+
 // 文件上传，返回文件信息，如果上传失败则返回std::nullopt
 // optional类是C++17引入的一个模板类，用于表示一个值可能存在也可能不存在的情况。它提供了一种安全的方式来处理可能为空的值，避免了使用裸指针或特殊值（如nullptr）来表示缺失数据的风险。
 std::optional<FileInfo> FileManager::upload_file(int user_id,

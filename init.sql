@@ -79,6 +79,38 @@ CREATE TABLE IF NOT EXISTS folders (
     INDEX idx_parent_id (parent_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
+-- 上传会话表
+CREATE TABLE upload_sessions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    upload_id VARCHAR(64) UNIQUE NOT NULL,
+    total_chunks INT NOT NULL,
+    file_size BIGINT NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+-- 分块记录表
+CREATE TABLE upload_chunks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    upload_id VARCHAR(64) NOT NULL,
+    chunk_index INT NOT NULL,
+    chunk_hash VARCHAR(64),
+    chunk_size BIGINT,
+    status ENUM(
+        'pending',
+        'uploading',
+        'completed',
+        'failed'
+    ),
+    uploaded_at TIMESTAMP,
+    UNIQUE KEY (upload_id, chunk_index),
+    FOREIGN KEY (upload_id) REFERENCES upload_sessions (upload_id)
+);
+
 -- 插入测试用户（密码：test123，哈希值为SHA256）
 INSERT INTO
     users (
