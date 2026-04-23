@@ -1,3 +1,5 @@
+import { escapeHtml, renderFileActions } from "../utils.js";
+
 export function renderFileCard(file, options) {
     const isSelected = options.selectedIds.has(file.id);
     const sharedTag = options.sharedMap[file.id] ? '<span class="meta-chip">已分享</span>' : "";
@@ -25,7 +27,7 @@ export function renderFileCard(file, options) {
                 <div class="file-card-title-row">
                     <h3 title="${escapeHtml(file.name)}">${file.name}</h3>
                     <div class="file-inline-actions">
-                        ${renderActionButtons(file.id)}
+                        ${renderFileActions(file.id)}
                     </div>
                 </div>
                 <div class="file-card-meta">
@@ -37,20 +39,4 @@ export function renderFileCard(file, options) {
             </div>
         </article>
     `;
-}
-
-function renderActionButtons(fileId) {
-    return `
-        <button class="icon-button" data-action="download-file" data-file-id="${fileId}">下载</button>
-        <button class="icon-button" data-action="open-rename" data-file-id="${fileId}">重命名</button>
-        <button class="icon-button" data-action="share-file" data-file-id="${fileId}">分享</button>
-    `;
-}
-
-function escapeHtml(value) {
-    return String(value || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
 }

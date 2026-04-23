@@ -1,4 +1,5 @@
 import { renderFileCard } from "./FileCard.js";
+import { escapeHtml, renderFileActions } from "../utils.js";
 
 export function renderFileList(state) {
     if (state.isLoadingFiles) {
@@ -117,10 +118,7 @@ function renderListTable(state) {
                                 <td>${state.sharedMap[file.id] ? '<span class="meta-chip">已分享</span>' : '<span class="meta-chip subtle">私有</span>'}</td>
                                 <td class="action-col">
                                     <div class="file-inline-actions">
-                                        <button class="icon-button" data-action="download-file" data-file-id="${file.id}">下载</button>
-                                        <button class="icon-button" data-action="open-rename" data-file-id="${file.id}">重命名</button>
-                                        <button class="icon-button" data-action="share-file" data-file-id="${file.id}">分享</button>
-                                        <button class="icon-button danger" data-action="delete-file" data-file-id="${file.id}">删除</button>
+                                        ${renderFileActions(file.id)}
                                     </div>
                                 </td>
                             </tr>
@@ -130,12 +128,4 @@ function renderListTable(state) {
             </table>
         </div>
     `;
-}
-
-function escapeHtml(value) {
-    return String(value || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
 }

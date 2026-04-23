@@ -357,6 +357,21 @@ button {
     background: var(--panel-soft);
 }
 
+.sidebar-panel--clickable {
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.sidebar-panel--clickable:hover {
+    background: var(--primary-soft);
+    border-color: var(--primary);
+}
+
+.sidebar-panel--clickable.is-active {
+    background: var(--primary-soft);
+    border-left: 3px solid var(--primary);
+}
+
 .sidebar-panel-header {
     display: flex;
     align-items: center;
@@ -501,7 +516,7 @@ button {
 
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 14px;
     margin: 18px 0;
 }
@@ -821,9 +836,9 @@ button {
     width: 58%;
 }
 
-.grid-duo {
+.grid-single {
     display: grid;
-    grid-template-columns: 1.2fr 0.8fr;
+    grid-template-columns: 1fr;
     gap: 18px;
 }
 
@@ -989,7 +1004,7 @@ button {
 
 @media (max-width: 1180px) {
     .dashboard-grid,
-    .grid-duo {
+    .grid-single {
         grid-template-columns: 1fr;
     }
 }

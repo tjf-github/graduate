@@ -2,6 +2,8 @@ import { renderSidebar } from "./components/Sidebar.js";
 import { renderHeader } from "./components/Header.js";
 import { renderFileList } from "./components/FileList.js";
 import { renderContextMenu } from "./components/ContextMenu.js";
+import { renderMessagePanel } from "./components/MessagePanel.js";
+import { escapeHtml, formatBytes } from "./utils.js";
 
 const API_BASE = "/api";
 const app = document.getElementById("app");
@@ -15,6 +17,7 @@ const state = {
     authMode: "login",
     activeSection: "files",
     viewMode: localStorage.getItem("lwcs_view_mode") || "list",
+    showShareInput: false,
     searchQuery: "",
     searchHistory: JSON.parse(localStorage.getItem("lwcs_search_history") || "[]"),
     profile: {
@@ -59,7 +62,9 @@ const state = {
     messages: [],
     messageStatus: "请选择一个用户开始聊天",
     messageLoading: false,
-    messagePollTimer: null
+    messagePollTimer: null,
+    statusPollTimer: null,
+    statusLastUpdated: ""
 };
 
 window.addEventListener("load", init);
@@ -88,6 +93,7 @@ async function bootstrapAuthorizedApp() {
     render();
     await Promise.all([loadUserProfile(), loadFileList(), loadServerStatus()]);
     restoreChatState();
+    startStatusPolling();
     render();
 }
 
@@ -103,12 +109,12 @@ function renderAuthShell() {
             <div class="auth-card">
                 <section class="auth-hero">
                     <div class="auth-hero-badge">Cloud Disk Experience</div>
-                    <h1>更像产品的云盘工作台</h1>
-                    <p>这次重构把文件管理、搜索、分享、上传反馈和消息能力整合到一套更成熟的三段式界面里，让现有功能更好用、更清晰，也更接近可商用的产品体验。</p>
+                    <h1>通信云服务</h1>
+                    <p>文件管理、搜索、分享与消息，整合于一套清晰的现代界面——开箱即用，也易于二次开发。</p>
                     <div class="hero-metrics">
-                        <div><strong>2</strong><span>文件视图模式</span></div>
-                        <div><strong>Shift</strong><span>范围多选</span></div>
-                        <div><strong>Real-time</strong><span>即时搜索过滤</span></div>
+                        <div><strong>2</strong><span>种视图模式</span></div>
+                        <div><strong>Shift</strong><span>范围快速多选</span></div>
+                        <div><strong>实时</strong><span>搜索过滤响应</span></div>
                     </div>
                 </section>
                 <section class="auth-panel">
@@ -171,11 +177,14 @@ function renderAppShell() {
                 ${renderSidebar(buildRenderState())}
                 <main class="main-panel">
                     ${renderHeader(buildRenderState())}
-                    ${renderDashboard()}
-                    ${renderDropzone()}
+                    ${["files", "recent", "shared"].includes(state.activeSection) ? renderDashboard() : ""}
+                    ${["files", "recent", "shared"].includes(state.activeSection) ? renderDropzone() : ""}
                     <div class="content-stack">
-                        ${state.activeSection === "messages" ? renderMessagesSection() : renderFileList(buildRenderState())}
-                        ${state.activeSection !== "messages" ? renderAuxPanels() : ""}
+                        ${state.activeSection === "messages"
+                            ? renderMessagesSection()
+                            : state.activeSection === "status"
+                                ? renderStatusSection()
+                                : renderFileList(buildRenderState())}
                     </div>
                 </main>
             </div>
@@ -189,10 +198,6 @@ function renderAppShell() {
 function renderDashboard() {
     const totalFiles = state.files.length;
     const sharedCount = Object.keys(state.sharedMap).length;
-    const selectedCount = state.selectedIds.size;
-    const usedRatio = state.profile.storageLimit > 0
-        ? `${Math.min(100, Math.round((state.profile.storageUsed / state.profile.storageLimit) * 100))}%`
-        : "0%";
 
     return `
         <section class="dashboard-grid">
@@ -205,16 +210,6 @@ function renderDashboard() {
                 <span>已分享</span>
                 <strong>${sharedCount}</strong>
                 <p>创建链接后会在“我的分享”中汇总</p>
-            </article>
-            <article class="metric-card">
-                <span>当前选择</span>
-                <strong>${selectedCount}</strong>
-                <p>支持复选框与 Shift 范围多选</p>
-            </article>
-            <article class="metric-card">
-                <span>空间使用</span>
-                <strong>${usedRatio}</strong>
-                <p>${formatBytes(state.profile.storageUsed)} / ${formatBytes(state.profile.storageLimit)}</p>
             </article>
         </section>
     `;
@@ -246,14 +241,14 @@ function renderDropzone() {
 
 function renderAuxPanels() {
     return `
-        <section class="grid-duo">
+        <section class="grid-single">
             <article class="status-panel">
                 <div class="section-toolbar">
                     <div>
                         <strong>服务器状态</strong>
                         <p>展示活跃连接与服务可用性</p>
                     </div>
-                    <button class="ghost-button" data-action="refresh-status">刷新状态</button>
+                    <small>每 30 秒自动刷新${state.statusLastUpdated ? `　${state.statusLastUpdated}` : ""}</small>
                 </div>
                 <div class="server-status-list">
                     <div class="server-status-item">
@@ -268,62 +263,38 @@ function renderAuxPanels() {
                     `).join("") || '<div class="server-status-item"><strong>暂无活跃连接明细</strong><p>当有新连接接入时会显示在这里。</p></div>'}
                 </div>
             </article>
-            <article class="chat-panel">
-                <div class="chat-header">
-                    <div>
-                        <strong>快捷消息入口</strong>
-                        <p>${state.messageStatus}</p>
-                    </div>
-                    <button class="ghost-button" data-action="switch-section" data-section="messages">打开完整会话</button>
-                </div>
-                <div class="chat-toolbar">
-                    <input id="quick-chat-user-id" type="number" min="1" placeholder="输入对方用户 ID" value="${state.activeChatUserId || ""}">
-                    <button class="primary-button" data-action="select-chat-user" data-source="quick">进入会话</button>
-                </div>
-                <div class="message-list">
-                    ${renderMessageBubbles(state.messages.slice(-4))}
-                </div>
-            </article>
+            ${renderMessagePanel(state, { compact: true })}
         </section>
     `;
 }
 
 function renderMessagesSection() {
+    return renderMessagePanel(state, { compact: false });
+}
+
+function renderStatusSection() {
     return `
-        <section class="chat-panel">
+        <section class="content-card">
             <div class="section-toolbar">
                 <div>
-                    <strong>消息通信</strong>
-                    <p>${state.messageStatus}</p>
+                    <strong>服务器状态</strong>
+                    <p>每 30 秒自动刷新${state.statusLastUpdated ? `　最后更新：${state.statusLastUpdated}` : ""}</p>
                 </div>
-                <button class="ghost-button" data-action="refresh-messages">刷新消息</button>
             </div>
-            <div class="chat-toolbar">
-                <input id="chat-user-id" type="number" min="1" placeholder="输入对方用户 ID" value="${state.activeChatUserId || ""}">
-                <button class="primary-button" data-action="select-chat-user">进入会话</button>
-            </div>
-            <div class="message-list">
-                ${renderMessageBubbles(state.messages)}
-            </div>
-            <div class="composer-row">
-                <textarea id="message-input" placeholder="输入消息内容，系统会每 3 秒拉取最新消息"></textarea>
-                <button class="primary-button" data-action="send-message">发送消息</button>
+            <div class="server-status-list">
+                <div class="server-status-item">
+                    <strong>${state.serverStatus.summary}</strong>
+                    <p>${state.serverStatus.detail}</p>
+                </div>
+                ${(state.serverStatus.clients || []).map((client) => `
+                    <div class="server-status-item">
+                        <strong>${client.ip}</strong>
+                        <p>socket fd: ${client.socket_fd}</p>
+                    </div>
+                `).join("") || '<div class="server-status-item"><strong>暂无活跃连接明细</strong><p>当有新连接接入时会显示在这里。</p></div>'}
             </div>
         </section>
     `;
-}
-
-function renderMessageBubbles(messages) {
-    if (!messages.length) {
-        return '<div class="server-status-item"><strong>暂无会话内容</strong><p>输入一个用户 ID 后即可开始收发消息。</p></div>';
-    }
-
-    return messages.map((msg) => `
-        <div class="message-bubble ${Number(msg.sender_id) === state.currentUserId ? "self" : ""}">
-            <div class="message-meta">发送方 ${msg.sender_id} -> 接收方 ${msg.receiver_id} | ${msg.created_at || "-"} | ${msg.is_read ? "已读" : "未读"}</div>
-            <div>${escapeHtml(msg.content || "")}</div>
-        </div>
-    `).join("");
 }
 
 function renderModal() {
@@ -442,15 +413,15 @@ function getSectionMeta(section) {
             description: "集中查看当前会话中创建过的分享链接。",
             breadcrumbs: ["我的文件", "分享中心"]
         },
-        trash: {
-            title: "回收站",
-            description: "当前后端为永久删除模式，这里主要用于给出能力边界提示。",
-            breadcrumbs: ["我的文件", "回收站"]
-        },
         messages: {
             title: "消息通信",
             description: "保留现有消息接口，用更清晰的会话布局承载。",
             breadcrumbs: ["工作台", "消息中心"]
+        },
+        status: {
+            title: "系统状态",
+            description: "查看服务器连接数、活跃客户端与自动刷新记录。",
+            breadcrumbs: ["工作台", "系统状态"]
         }
     };
 
@@ -466,10 +437,6 @@ function computeVisibleFiles() {
 
     if (state.activeSection === "shared") {
         files = files.filter((file) => state.sharedMap[file.id]);
-    }
-
-    if (state.activeSection === "trash") {
-        files = [];
     }
 
     if (state.searchQuery.trim()) {
@@ -586,13 +553,14 @@ function onDocumentClick(event) {
         return;
     }
 
-    if (action === "refresh-files") {
-        loadFileList();
+    if (action === "toggle-share-input") {
+        state.showShareInput = !state.showShareInput;
+        render();
         return;
     }
 
-    if (action === "refresh-status") {
-        loadServerStatus();
+    if (action === "refresh-files") {
+        loadFileList();
         return;
     }
 
@@ -773,10 +741,12 @@ function onDragEnter(event) {
 function onDragOver(event) {
     if (!state.currentToken || !hasFiles(event)) return;
     event.preventDefault();
+    event.stopPropagation();
 }
 
 function onDragLeave(event) {
     if (!state.currentToken) return;
+    event.preventDefault();
     if (event.relatedTarget) return;
     state.dragActive = false;
     render();
@@ -785,6 +755,7 @@ function onDragLeave(event) {
 function onDrop(event) {
     if (!state.currentToken || !hasFiles(event)) return;
     event.preventDefault();
+    event.stopPropagation();
     state.dragActive = false;
     const file = event.dataTransfer?.files?.[0];
     if (file) {
@@ -1123,7 +1094,7 @@ async function createShare(fileId) {
             state.modal = { type: "share", payload: { url } };
             render();
             try {
-                await navigator.clipboard.writeText(url);
+                await copyToClipboard(url);
                 showToast("分享链接已复制到剪贴板");
             } catch (_) {
                 showToast("分享链接已生成");
@@ -1223,9 +1194,23 @@ function rememberSearch(keyword) {
     localStorage.setItem("lwcs_search_history", JSON.stringify(state.searchHistory));
 }
 
+async function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand("copy");
+    el.remove();
+}
+
 function getSearchSuggestions() {
-    const localHints = state.files.slice(0, 4).map((file) => file.original_filename || file.filename || "");
-    return [...new Set([...state.searchHistory, ...localHints].filter(Boolean))].slice(0, 5);
+    return state.searchHistory.slice(0, 5);
 }
 
 async function loadServerStatus() {
@@ -1244,6 +1229,7 @@ async function loadServerStatus() {
                 detail: clients.length > 0 ? `共同步到 ${clients.length} 个连接节点。` : "当前没有额外的活跃连接明细。",
                 clients
             };
+            state.statusLastUpdated = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         } else {
             state.serverStatus = {
                 summary: "状态获取失败",
@@ -1281,6 +1267,20 @@ function stopMessagePolling() {
     if (!state.messagePollTimer) return;
     window.clearInterval(state.messagePollTimer);
     state.messagePollTimer = null;
+}
+
+function startStatusPolling() {
+    stopStatusPolling();
+    if (!state.currentToken) return;
+    state.statusPollTimer = window.setInterval(() => {
+        loadServerStatus();
+    }, 30000);
+}
+
+function stopStatusPolling() {
+    if (!state.statusPollTimer) return;
+    window.clearInterval(state.statusPollTimer);
+    state.statusPollTimer = null;
 }
 
 async function selectChatUser(rawValue) {
@@ -1353,7 +1353,7 @@ async function copyShareLink() {
     const url = state.modal.payload?.url;
     if (!url) return;
     try {
-        await navigator.clipboard.writeText(url);
+        await copyToClipboard(url);
         showToast("链接已复制");
     } catch (_) {
         showToast("复制失败，请手动复制", "error");
@@ -1422,6 +1422,7 @@ async function handleLogout() {
 
 function clearAuthState() {
     stopMessagePolling();
+    stopStatusPolling();
     state.currentToken = "";
     state.currentUser = "";
     state.currentUserId = 0;
@@ -1447,6 +1448,7 @@ function clearAuthState() {
         detail: "服务器状态会在登录后自动刷新。",
         clients: []
     };
+    state.statusLastUpdated = "";
     localStorage.removeItem("lwcs_token");
     localStorage.removeItem("lwcs_user");
     localStorage.removeItem("lwcs_user_id");
@@ -1467,24 +1469,4 @@ function showToast(text, type = "success") {
         state.toastList = state.toastList.filter((item) => item.id !== id);
         render();
     }, 2600);
-}
-
-function formatBytes(bytes) {
-    if (!Number.isFinite(bytes) || bytes < 0) return "-";
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    let value = bytes;
-    let unitIndex = 0;
-    while (value >= 1024 && unitIndex < units.length - 1) {
-        value /= 1024;
-        unitIndex += 1;
-    }
-    return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${units[unitIndex]}`;
-}
-
-function escapeHtml(value) {
-    return String(value || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
 }

@@ -2,7 +2,6 @@ const navItems = [
     { id: "files", label: "全部文件", hint: "集中管理上传内容", badge: "All" },
     { id: "recent", label: "最近", hint: "按最近上传排序", badge: "New" },
     { id: "shared", label: "我的分享", hint: "查看已创建链接", badge: "Link" },
-    { id: "trash", label: "回收站", hint: "当前版本为永久删除", badge: "Bin" },
     { id: "messages", label: "消息", hint: "点对点消息通信", badge: "Chat" }
 ];
 
@@ -55,11 +54,17 @@ export function renderSidebar(state) {
                 <p>${state.profile.username || state.currentUser || "-"}</p>
                 <small>${state.profile.email || "未同步邮箱"}</small>
                 <button class="ghost-button full-width" data-action="open-profile-edit">编辑资料</button>
+                <button class="ghost-button full-width" data-action="logout">退出登录</button>
             </section>
 
-            <section class="sidebar-panel">
+            <section
+                class="sidebar-panel sidebar-panel--clickable ${state.activeSection === "status" ? "is-active" : ""}"
+                data-action="switch-section"
+                data-section="status"
+            >
                 <div class="sidebar-panel-header">
                     <strong>系统状态</strong>
+                    ${state.statusLastUpdated ? `<small>${state.statusLastUpdated}</small>` : ""}
                 </div>
                 <p>${state.serverStatus.summary}</p>
                 <small>${state.serverStatus.detail}</small>

@@ -31,10 +31,10 @@ CloudDiskServer::CloudDiskServer(int p, const DBConfig &db_config,
 {
 
     // 初始化线程池
-    thread_pool = std::make_unique<ThreadPool>(10);
+    thread_pool = std::make_unique<ThreadPool>(50);
 
     // 初始化数据库连接池
-    db_pool = std::make_shared<DBConnectionPool>(db_config, 10);
+    db_pool = std::make_shared<DBConnectionPool>(db_config, 50);
 
     // 初始化管理器
     user_manager = std::make_shared<UserManager>(db_pool);
@@ -90,7 +90,7 @@ bool CloudDiskServer::create_socket()
     }
 
     // 开始监听
-    if (listen(server_fd, 10) < 0)
+    if (listen(server_fd, 50) < 0)
     {
         LOG_ERROR("Listen failed");
         close(server_fd);
