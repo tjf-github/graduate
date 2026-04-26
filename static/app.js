@@ -38,10 +38,13 @@ const state = {
     fileError: "",
     showDropzone: false,
     dragActive: false,
+    dragDepth: 0,
     upload: {
         inProgress: false,
         progress: 0,
-        filename: ""
+        filename: "",
+        currentIndex: 0,
+        total: 0
     },
     modal: {
         type: "",
@@ -217,13 +220,14 @@ function renderDashboard() {
 
 function renderDropzone() {
     const isVisible = state.showDropzone || state.dragActive;
+    const hasQueue = state.upload.total > 1;
     return `
         <section class="dropzone ${isVisible ? "is-visible" : ""} ${state.dragActive ? "is-active" : ""}" id="dropzone">
             <strong>拖拽文件到这里即可上传</strong>
-            <p>保留当前上传接口，同时补上更清晰的进度反馈。</p>
+            <p>支持拖拽或选择文件，上传完成后会自动刷新列表。</p>
             ${state.upload.inProgress ? `
                 <div class="upload-status">
-                    <strong>${state.upload.filename || "正在上传"}</strong>
+                    <strong>${state.upload.filename || "正在上传"}${hasQueue ? `（${state.upload.currentIndex}/${state.upload.total}）` : ""}</strong>
                     <div class="progress-track">
                         <div class="progress-fill" style="width:${state.upload.progress}%"></div>
                     </div>
@@ -733,6 +737,14 @@ function onDocumentKeyDown(event) {
 function onDragEnter(event) {
     if (!state.currentToken || !hasFiles(event)) return;
     event.preventDefault();
+    event.stopPropagation();
+
+    if (!isFileSectionActive()) {
+        return;
+    }
+
+    state.dragDepth += 1;
+    if (state.dragActive) return;
     state.dragActive = true;
     state.showDropzone = true;
     render();
@@ -742,12 +754,19 @@ function onDragOver(event) {
     if (!state.currentToken || !hasFiles(event)) return;
     event.preventDefault();
     event.stopPropagation();
+    if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = isFileSectionActive() ? "copy" : "none";
+    }
 }
 
 function onDragLeave(event) {
-    if (!state.currentToken) return;
+    if (!state.currentToken || !hasFiles(event)) return;
     event.preventDefault();
-    if (event.relatedTarget) return;
+    event.stopPropagation();
+    if (!isFileSectionActive()) return;
+
+    state.dragDepth = Math.max(0, state.dragDepth - 1);
+    if (state.dragDepth > 0 || !state.dragActive) return;
     state.dragActive = false;
     render();
 }
@@ -756,13 +775,21 @@ function onDrop(event) {
     if (!state.currentToken || !hasFiles(event)) return;
     event.preventDefault();
     event.stopPropagation();
+
+    state.dragDepth = 0;
     state.dragActive = false;
-    const file = event.dataTransfer?.files?.[0];
-    if (file) {
-        uploadFile(file);
-    } else {
+    if (!isFileSectionActive()) {
+        showToast("请切换到文件页面后再上传", "error");
         render();
+        return;
     }
+
+    const files = Array.from(event.dataTransfer?.files || []);
+    if (files.length > 0) {
+        uploadFiles(files);
+        return;
+    }
+    render();
 }
 
 function hasFiles(event) {
@@ -770,10 +797,14 @@ function hasFiles(event) {
 }
 
 function handleHiddenFilePick(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    uploadFile(file);
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    uploadFiles(files);
     event.target.value = "";
+}
+
+function isFileSectionActive() {
+    return ["files", "recent", "shared"].includes(state.activeSection);
 }
 
 function toggleFileSelection(fileId, index, event) {
@@ -984,15 +1015,51 @@ function pruneSelection() {
     state.selectedIds = new Set([...state.selectedIds].filter((id) => available.has(id)));
 }
 
-async function uploadFile(file) {
-    if (!file) return;
+async function uploadFiles(files) {
+    const queue = files.filter((file) => file && typeof file.name === "string");
+    if (!queue.length) return;
+    if (state.upload.inProgress) {
+        showToast("已有上传任务进行中，请稍候", "error");
+        return;
+    }
 
+    state.showDropzone = true;
+    render();
+
+    let successCount = 0;
+    let failedCount = 0;
+    for (let i = 0; i < queue.length; i += 1) {
+        const ok = await uploadSingleFile(queue[i], i + 1, queue.length);
+        if (ok) {
+            successCount += 1;
+        } else {
+            failedCount += 1;
+        }
+    }
+
+    if (successCount > 0) {
+        await Promise.all([loadFileList(), loadUserProfile()]);
+    }
+
+    if (queue.length === 1) {
+        showToast(successCount === 1 ? "文件上传成功" : "上传失败", successCount === 1 ? "success" : "error");
+    } else if (failedCount === 0) {
+        showToast(`共 ${queue.length} 个文件，已全部上传完成`);
+    } else if (successCount === 0) {
+        showToast(`共 ${queue.length} 个文件，上传全部失败`, "error");
+    } else {
+        showToast(`上传完成：成功 ${successCount}，失败 ${failedCount}`, "error");
+    }
+}
+
+async function uploadSingleFile(file, index, total) {
     state.upload = {
         inProgress: true,
         progress: 0,
-        filename: file.name
+        filename: file.name,
+        currentIndex: index,
+        total
     };
-    state.showDropzone = true;
     render();
 
     try {
@@ -1011,15 +1078,18 @@ async function uploadFile(file) {
             xhr.onload = async () => {
                 try {
                     const data = JSON.parse(xhr.responseText || "{}");
-                    if (data.code === 200) {
+                    if (xhr.status === 401 || data.code === 401) {
+                        handleUnauthorized();
+                        reject(new Error("unauthorized"));
+                        return;
+                    }
+
+                    if (xhr.status >= 200 && xhr.status < 300 && data.code === 200) {
                         state.upload.progress = 100;
                         render();
-                        showToast("文件上传成功");
-                        await Promise.all([loadFileList(), loadUserProfile()]);
                         resolve();
                     } else {
-                        showToast(data.message || "上传失败", "error");
-                        reject(new Error("upload failed"));
+                        reject(new Error(data.message || "上传失败"));
                     }
                 } catch (error) {
                     reject(error);
@@ -1029,13 +1099,17 @@ async function uploadFile(file) {
             xhr.onerror = () => reject(new Error("network error"));
             xhr.send(file);
         });
+        return true;
     } catch (_) {
-        showToast("上传过程中出错", "error");
+        showToast(`上传失败：${file.name}`, "error");
+        return false;
     } finally {
         state.upload = {
             inProgress: false,
             progress: 0,
-            filename: ""
+            filename: "",
+            currentIndex: 0,
+            total: 0
         };
         render();
     }
@@ -1443,6 +1517,15 @@ function clearAuthState() {
     state.selectedIds = new Set();
     state.modal = { type: "", payload: null };
     state.contextMenu = { visible: false, x: 0, y: 0, fileId: null };
+    state.dragActive = false;
+    state.dragDepth = 0;
+    state.upload = {
+        inProgress: false,
+        progress: 0,
+        filename: "",
+        currentIndex: 0,
+        total: 0
+    };
     state.serverStatus = {
         summary: "等待同步",
         detail: "服务器状态会在登录后自动刷新。",

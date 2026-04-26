@@ -3,6 +3,7 @@
 #include <algorithm>
 
 // JsonBuilder实现
+//处理特殊字符转义
 std::string JsonBuilder::escape_json(const std::string& str) {
     std::string result;
     for(char c : str) {
