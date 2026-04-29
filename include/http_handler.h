@@ -28,6 +28,9 @@ struct HttpResponse
     std::string status_text;
     std::map<std::string, std::string> headers;
     std::string body;
+    bool stream_file = false;
+    std::string stream_file_path;
+    long long stream_file_size = 0;
     HttpResponse() : status_code(200), status_text("OK")
     {
         headers["Content-Type"] = "application/json";
@@ -60,7 +63,13 @@ private:
     HttpResponse handle_user_info(const HttpRequest &request);
     HttpResponse handle_user_profile_update(const HttpRequest &request);
     HttpResponse handle_file_upload(const HttpRequest &request);
+    HttpResponse handle_file_upload_init(const HttpRequest &request);
+    HttpResponse handle_file_upload_chunk(const HttpRequest &request);
+    HttpResponse handle_file_upload_progress(const HttpRequest &request);
+    HttpResponse handle_file_upload_complete(const HttpRequest &request);
+    HttpResponse handle_file_upload_cancel(const HttpRequest &request);
     HttpResponse handle_file_download(const HttpRequest &request);
+    HttpResponse handle_file_download_stream(const HttpRequest &request);
     HttpResponse handle_file_list(const HttpRequest &request);
     HttpResponse handle_file_delete(const HttpRequest &request);
     HttpResponse handle_file_rename(const HttpRequest &request);

@@ -126,8 +126,20 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
     // 文件操作
     if (request.path == "/api/file/list" && request.method == "GET")
         return handle_file_list(request);
+    if (request.path == "/api/file/upload/init" && request.method == "POST")
+        return handle_file_upload_init(request);
+    if (request.path == "/api/file/upload/chunk" && request.method == "POST")
+        return handle_file_upload_chunk(request);
+    if (request.path == "/api/file/upload/progress" && request.method == "GET")
+        return handle_file_upload_progress(request);
+    if (request.path == "/api/file/upload/complete" && request.method == "POST")
+        return handle_file_upload_complete(request);
+    if (request.path == "/api/file/upload/cancel" && request.method == "POST")
+        return handle_file_upload_cancel(request);
     if (request.path == "/api/file/upload" && request.method == "POST")
         return handle_file_upload(request);
+    if (request.path == "/api/file/download/stream" && request.method == "GET")
+        return handle_file_download_stream(request);
     if (request.path.find("/api/file/download") == 0 && request.method == "GET")
         return handle_file_download(request);
     if (request.path == "/api/file/delete" && (request.method == "POST" || request.method == "DELETE"))
@@ -220,6 +232,12 @@ HttpResponse HttpHandler::json_response(int code, const std::string &message, co
         break;
     case 404:
         response.status_text = "Not Found";
+        break;
+    case 410:
+        response.status_text = "Gone";
+        break;
+    case 507:
+        response.status_text = "Insufficient Storage";
         break;
     case 500:
         response.status_text = "Internal Server Error";
@@ -413,6 +431,199 @@ HttpResponse HttpHandler::handle_file_list(const HttpRequest &request)
     return json_response(200, "Success", json_array);
 }
 
+HttpResponse HttpHandler::handle_file_upload_init(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+    {
+        return error_response(401, "Unauthorized");
+    }
+
+    JsonParser parser(request.body);
+    std::string filename = parser.get_string("filename");
+    long long total_size = parser.get_long("total_size", 0);
+    int total_chunks = parser.get_int("total_chunks", 0);
+    std::string mime_type = parser.get_string("mime_type", "application/octet-stream");
+
+    if (filename.empty() || total_size <= 0 || total_chunks <= 0)
+    {
+        return error_response(400, "Invalid upload init parameters");
+    }
+
+    auto user = user_manager->get_user_by_id(user_id);
+    if (!user)
+    {
+        return error_response(404, "User not found");
+    }
+    if (user->storage_used + total_size > user->storage_limit)
+    {
+        return error_response(507, "Insufficient storage space");
+    }
+
+    auto session = file_manager->create_upload_session(
+        user_id, filename, total_size, total_chunks, mime_type);
+    if (!session)
+    {
+        return error_response(500, "Failed to initialize upload session");
+    }
+
+    const long long chunk_size = (total_size + total_chunks - 1) / total_chunks;
+    JsonBuilder builder;
+    builder.add("upload_id", session->upload_id);
+    builder.add("chunk_size", chunk_size);
+    builder.add("total_chunks", total_chunks);
+    return json_response(200, "Success", builder.build());
+}
+
+HttpResponse HttpHandler::handle_file_upload_chunk(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+    {
+        return error_response(401, "Unauthorized");
+    }
+
+    std::string upload_id = request.params.count("upload_id") ? request.params.at("upload_id") : "";
+    int chunk_index = parse_int_param(request.params, "chunk_index", -1);
+    std::string chunk_hash = request.params.count("chunk_hash") ? request.params.at("chunk_hash") : "";
+
+    if (upload_id.empty() || chunk_index < 0 || request.body.empty())
+    {
+        return error_response(400, "Invalid upload chunk parameters");
+    }
+
+    UploadProgress progress = file_manager->get_upload_progress(upload_id, user_id);
+    if (!progress.exists)
+    {
+        return error_response(404, "Upload session not found");
+    }
+    if (progress.expired)
+    {
+        return error_response(410, "Upload session expired");
+    }
+    if (progress.status != "uploading")
+    {
+        return error_response(400, "Upload session is not active");
+    }
+
+    bool ok = file_manager->save_chunk(upload_id, chunk_index, chunk_hash,
+                                       request.body.data(), request.body.size());
+    if (!ok)
+    {
+        return error_response(400, "Chunk hash mismatch or save failed");
+    }
+
+    return json_response(200, "Chunk uploaded");
+}
+
+HttpResponse HttpHandler::handle_file_upload_progress(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+    {
+        return error_response(401, "Unauthorized");
+    }
+
+    std::string upload_id = request.params.count("upload_id") ? request.params.at("upload_id") : "";
+    if (upload_id.empty())
+    {
+        return error_response(400, "Missing upload_id");
+    }
+
+    UploadProgress progress = file_manager->get_upload_progress(upload_id, user_id);
+    if (!progress.exists)
+    {
+        return error_response(404, "Upload session not found");
+    }
+    if (progress.expired)
+    {
+        return error_response(410, "Upload session expired");
+    }
+
+    std::ostringstream data;
+    data << "{"
+         << "\"upload_id\":\"" << upload_id << "\","
+         << "\"total_chunks\":" << progress.total_chunks << ","
+         << "\"completed_chunks\":" << progress.completed_chunks << ","
+         << "\"total_size\":" << progress.total_size << ","
+         << "\"uploaded_size\":" << progress.uploaded_size << ","
+         << "\"progress\":" << std::fixed << std::setprecision(4) << progress.progress
+         << "}";
+    return json_response(200, "Success", data.str());
+}
+
+HttpResponse HttpHandler::handle_file_upload_complete(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+    {
+        return error_response(401, "Unauthorized");
+    }
+
+    std::string upload_id = request.params.count("upload_id") ? request.params.at("upload_id") : "";
+    if (upload_id.empty())
+    {
+        return error_response(400, "Missing upload_id");
+    }
+
+    UploadProgress progress = file_manager->get_upload_progress(upload_id, user_id);
+    if (!progress.exists)
+    {
+        return error_response(404, "Upload session not found");
+    }
+    if (progress.expired)
+    {
+        return error_response(410, "Upload session expired");
+    }
+    if (progress.completed_chunks != progress.total_chunks)
+    {
+        return error_response(400, "Upload not complete");
+    }
+
+    auto result = file_manager->complete_upload(upload_id, user_id);
+    if (!result)
+    {
+        return error_response(500, "Failed to complete upload");
+    }
+
+    JsonBuilder builder;
+    builder.add("file_id", result->id);
+    builder.add("filename", result->original_filename);
+    builder.add("size", result->file_size);
+    return json_response(200, "Upload complete", builder.build());
+}
+
+HttpResponse HttpHandler::handle_file_upload_cancel(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+    {
+        return error_response(401, "Unauthorized");
+    }
+
+    std::string upload_id = request.params.count("upload_id") ? request.params.at("upload_id") : "";
+    if (upload_id.empty())
+    {
+        return error_response(400, "Missing upload_id");
+    }
+
+    UploadProgress progress = file_manager->get_upload_progress(upload_id, user_id);
+    if (!progress.exists)
+    {
+        return error_response(404, "Upload session not found");
+    }
+    if (progress.expired)
+    {
+        return error_response(410, "Upload session expired");
+    }
+
+    if (!file_manager->cancel_upload(upload_id, user_id))
+    {
+        return error_response(500, "Failed to cancel upload");
+    }
+    return json_response(200, "Upload cancelled");
+}
+
 HttpResponse HttpHandler::handle_file_upload(const HttpRequest &request)
 {
     int user_id = get_user_id_from_session(request);
@@ -580,6 +791,50 @@ HttpResponse HttpHandler::handle_file_download(const HttpRequest &request)
     {
         return error_response(500, "Download failed");
     }
+}
+
+HttpResponse HttpHandler::handle_file_download_stream(const HttpRequest &request)
+{
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+    {
+        return error_response(401, "Unauthorized");
+    }
+
+    int file_id = parse_int_param(request.params, "id", -1);
+    if (file_id <= 0)
+    {
+        return error_response(400, "Missing file ID");
+    }
+
+    auto file_info = file_manager->get_file_info(file_id, user_id);
+    if (!file_info)
+    {
+        return error_response(404, "File not found");
+    }
+
+    std::ifstream check(file_info->file_path, std::ios::binary);
+    if (!check)
+    {
+        return error_response(404, "File content not found");
+    }
+    check.close();
+
+    HttpResponse response;
+    response.status_code = 200;
+    response.status_text = "OK";
+    response.stream_file = true;
+    response.stream_file_path = file_info->file_path;
+    response.stream_file_size = file_info->file_size;
+    response.headers["Content-Type"] = file_info->mime_type.empty()
+                                           ? "application/octet-stream"
+                                           : file_info->mime_type;
+    response.headers["Content-Disposition"] = "attachment; filename=\"" +
+                                              file_info->original_filename +
+                                              "\"; filename*=UTF-8''" +
+                                              url_encode_utf8(file_info->original_filename);
+    response.headers["Content-Length"] = std::to_string(file_info->file_size);
+    return response;
 }
 
 HttpResponse HttpHandler::handle_file_delete(const HttpRequest &request)
@@ -772,6 +1027,10 @@ std::string HttpHandler::get_session_token(const HttpRequest &request)
         {
             return auth.substr(7);
         }
+    }
+    if (request.headers.count("X-Token"))
+    {
+        return request.headers.at("X-Token");
     }
     return "";
 }

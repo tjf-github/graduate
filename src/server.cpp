@@ -3,6 +3,9 @@
 #include "logger.h"
 #include <iostream>
 #include <cstring>
+#include <fstream>
+#include <sstream>
+#include <vector>
 // 线程头文件
 #include <thread>
 #include <chrono>
@@ -24,6 +27,24 @@
 // IP地址转换函数
 #include <arpa/inet.h>
 #endif
+// 写入数据到socket，确保全部写入
+namespace
+{
+bool write_all(int fd, const char *data, size_t len)
+{
+    size_t written = 0;
+    while (written < len)
+    {
+        ssize_t n = write(fd, data + written, len - written);
+        if (n <= 0)
+        {
+            return false;
+        }
+        written += static_cast<size_t>(n);
+    }
+    return true;
+}
+} // namespace
 
 CloudDiskServer::CloudDiskServer(int p, const DBConfig &db_config,
                                  const std::string &storage_path)
@@ -183,12 +204,64 @@ void CloudDiskServer::handle_client(int client_fd)
     // 处理请求
     HttpResponse response = http_handler->handle_request(request);
 
-    // 发送响应
-    std::string response_str = HttpParser::build_response(response);
-    auto bytes_written = write(client_fd, response_str.c_str(), response_str.length());
-    if (bytes_written < 0)
+    if (response.stream_file)
     {
-        LOG_WARN("Failed to write response to client");
+        std::ostringstream header_stream;
+        header_stream << "HTTP/1.1 " << response.status_code << " " << response.status_text << "\r\n";
+        for (const auto &header : response.headers)
+        {
+            header_stream << header.first << ": " << header.second << "\r\n";
+        }
+        if (response.headers.find("Content-Length") == response.headers.end())
+        {
+            header_stream << "Content-Length: " << response.stream_file_size << "\r\n";
+        }
+        if (response.headers.find("Connection") == response.headers.end())
+        {
+            header_stream << "Connection: close\r\n";
+        }
+        header_stream << "\r\n";
+
+        std::string header_text = header_stream.str();
+        if (!write_all(client_fd, header_text.c_str(), header_text.size()))
+        {
+            LOG_WARN("Failed to write response header");
+        }
+        else
+        {
+            std::ifstream input(response.stream_file_path, std::ios::binary);
+            if (!input)
+            {
+                LOG_WARN("Failed to open stream file: " + response.stream_file_path);
+            }
+            else
+            {
+                std::vector<char> buffer(64 * 1024);
+                while (input)
+                {
+                    input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+                    std::streamsize n = input.gcount();
+                    if (n <= 0)
+                    {
+                        break;
+                    }
+                    if (!write_all(client_fd, buffer.data(), static_cast<size_t>(n)))
+                    {
+                        LOG_WARN("Failed to stream response body");
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        // 发送响应
+        std::string response_str = HttpParser::build_response(response);
+        if (!write_all(client_fd, response_str.c_str(), response_str.length()))
+        {
+            LOG_WARN("Failed to write response to client");
+        }
     }
 
     // 关闭连接

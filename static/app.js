@@ -6,6 +6,9 @@ import { renderMessagePanel } from "./components/MessagePanel.js";
 import { escapeHtml, formatBytes } from "./utils.js";
 
 const API_BASE = "/api";
+const CHUNK_SIZE = 4 * 1024 * 1024;
+const CHUNK_CONCURRENCY = 3;
+const LARGE_FILE_THRESHOLD = CHUNK_SIZE * 2;
 const app = document.getElementById("app");
 const hiddenFileInput = document.getElementById("hidden-file-input");
 
@@ -44,7 +47,12 @@ const state = {
         progress: 0,
         filename: "",
         currentIndex: 0,
-        total: 0
+        total: 0,
+        mode: "",
+        statusText: "",
+        cancelRequested: false,
+        activeUploadId: "",
+        abortController: null
     },
     modal: {
         type: "",
@@ -231,7 +239,12 @@ function renderDropzone() {
                     <div class="progress-track">
                         <div class="progress-fill" style="width:${state.upload.progress}%"></div>
                     </div>
-                    <p>上传进度 ${state.upload.progress}%</p>
+                    <p>上传进度 ${state.upload.progress}%${state.upload.statusText ? ` · ${state.upload.statusText}` : ""}</p>
+                    ${state.upload.mode === "chunk" ? `
+                        <div class="empty-actions">
+                            <button class="ghost-button" data-action="cancel-upload">${state.upload.cancelRequested ? "正在取消..." : "取消上传"}</button>
+                        </div>
+                    ` : ""}
                 </div>
             ` : `
                 <div class="empty-actions">
@@ -565,6 +578,17 @@ function onDocumentClick(event) {
 
     if (action === "refresh-files") {
         loadFileList();
+        return;
+    }
+
+    if (action === "cancel-upload") {
+        if (state.upload.inProgress) {
+            state.upload.cancelRequested = true;
+            if (state.upload.abortController) {
+                state.upload.abortController.abort();
+            }
+            render();
+        }
         return;
     }
 
@@ -1058,61 +1082,192 @@ async function uploadSingleFile(file, index, total) {
         progress: 0,
         filename: file.name,
         currentIndex: index,
-        total
+        total,
+        mode: file.size >= LARGE_FILE_THRESHOLD ? "chunk" : "single",
+        statusText: file.size >= LARGE_FILE_THRESHOLD ? "分块上传中" : "普通上传中",
+        cancelRequested: false,
+        activeUploadId: "",
+        abortController: null
     };
     render();
 
     try {
-        await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", `${API_BASE}/file/upload`);
-            xhr.setRequestHeader("Authorization", `Bearer ${state.currentToken}`);
-            xhr.setRequestHeader("X-Filename", encodeURIComponent(file.name));
-
-            xhr.upload.onprogress = (evt) => {
-                if (!evt.lengthComputable) return;
-                state.upload.progress = Math.round((evt.loaded / evt.total) * 100);
-                render();
-            };
-
-            xhr.onload = async () => {
-                try {
-                    const data = JSON.parse(xhr.responseText || "{}");
-                    if (xhr.status === 401 || data.code === 401) {
-                        handleUnauthorized();
-                        reject(new Error("unauthorized"));
-                        return;
-                    }
-
-                    if (xhr.status >= 200 && xhr.status < 300 && data.code === 200) {
-                        state.upload.progress = 100;
-                        render();
-                        resolve();
-                    } else {
-                        reject(new Error(data.message || "上传失败"));
-                    }
-                } catch (error) {
-                    reject(error);
-                }
-            };
-
-            xhr.onerror = () => reject(new Error("network error"));
-            xhr.send(file);
-        });
+        if (file.size >= LARGE_FILE_THRESHOLD) {
+            await uploadLargeFile(file);
+        } else {
+            await uploadSimpleFile(file);
+        }
         return true;
-    } catch (_) {
-        showToast(`上传失败：${file.name}`, "error");
+    } catch (error) {
+        if (state.upload.cancelRequested || error?.message === "cancelled") {
+            showToast(`已取消上传：${file.name}`);
+        } else {
+            showToast(`上传失败：${file.name}`, "error");
+        }
         return false;
     } finally {
-        state.upload = {
-            inProgress: false,
-            progress: 0,
-            filename: "",
-            currentIndex: 0,
-            total: 0
-        };
+        resetUploadState();
         render();
     }
+}
+
+function resetUploadState() {
+    state.upload = {
+        inProgress: false,
+        progress: 0,
+        filename: "",
+        currentIndex: 0,
+        total: 0,
+        mode: "",
+        statusText: "",
+        cancelRequested: false,
+        activeUploadId: "",
+        abortController: null
+    };
+}
+
+async function uploadSimpleFile(file) {
+    await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${API_BASE}/file/upload`);
+        xhr.setRequestHeader("Authorization", `Bearer ${state.currentToken}`);
+        xhr.setRequestHeader("X-Filename", encodeURIComponent(file.name));
+
+        xhr.upload.onprogress = (evt) => {
+            if (!evt.lengthComputable) return;
+            state.upload.progress = Math.round((evt.loaded / evt.total) * 100);
+            render();
+        };
+
+        xhr.onload = async () => {
+            try {
+                const data = JSON.parse(xhr.responseText || "{}");
+                if (xhr.status === 401 || data.code === 401) {
+                    handleUnauthorized();
+                    reject(new Error("unauthorized"));
+                    return;
+                }
+
+                if (xhr.status >= 200 && xhr.status < 300 && data.code === 200) {
+                    state.upload.progress = 100;
+                    render();
+                    resolve();
+                } else {
+                    reject(new Error(data.message || "上传失败"));
+                }
+            } catch (error) {
+                reject(error);
+            }
+        };
+
+        xhr.onerror = () => reject(new Error("network error"));
+        xhr.send(file);
+    });
+}
+
+async function uploadLargeFile(file) {
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    const initRes = await requestJson(`${API_BASE}/file/upload/init`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+            filename: file.name,
+            total_size: file.size,
+            total_chunks: totalChunks,
+            mime_type: file.type || "application/octet-stream"
+        })
+    });
+
+    if (initRes.data.code !== 200 || !initRes.data.data?.upload_id) {
+        throw new Error(initRes.data.message || "初始化上传失败");
+    }
+
+    const uploadId = initRes.data.data.upload_id;
+    state.upload.activeUploadId = uploadId;
+    state.upload.statusText = `分块上传中（共 ${totalChunks} 块）`;
+    render();
+
+    const chunkQueue = Array.from({ length: totalChunks }, (_, i) => i);
+    let uploadedChunks = 0;
+
+    const uploadOneChunk = async (chunkIndex) => {
+        if (state.upload.cancelRequested) {
+            throw new Error("cancelled");
+        }
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunkBlob = file.slice(start, end);
+        const chunkBuffer = await chunkBlob.arrayBuffer();
+        const hash = await calculateSHA256Hex(chunkBuffer);
+
+        const controller = new AbortController();
+        state.upload.abortController = controller;
+        const res = await fetch(
+            `${API_BASE}/file/upload/chunk?upload_id=${encodeURIComponent(uploadId)}&chunk_index=${chunkIndex}&chunk_hash=${hash}`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${state.currentToken}`
+                },
+                body: chunkBlob,
+                signal: controller.signal
+            }
+        );
+
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401 || data.code === 401) {
+            handleUnauthorized();
+            throw new Error("unauthorized");
+        }
+        if (!res.ok || data.code !== 200) {
+            throw new Error(data.message || `分块上传失败: ${chunkIndex}`);
+        }
+
+        uploadedChunks += 1;
+        state.upload.progress = Math.round((uploadedChunks / totalChunks) * 100);
+        render();
+    };
+
+    const workers = Array.from({ length: Math.min(CHUNK_CONCURRENCY, totalChunks) }, async () => {
+        while (chunkQueue.length > 0) {
+            const chunkIndex = chunkQueue.shift();
+            if (chunkIndex === undefined) return;
+            await uploadOneChunk(chunkIndex);
+        }
+    });
+
+    try {
+        await Promise.all(workers);
+    } catch (error) {
+        if (state.upload.cancelRequested || error?.name === "AbortError" || error?.message === "cancelled") {
+            await requestJson(`${API_BASE}/file/upload/cancel?upload_id=${encodeURIComponent(uploadId)}`, {
+                method: "POST",
+                headers: getAuthHeaders()
+            }).catch(() => null);
+            throw new Error("cancelled");
+        }
+        throw error;
+    }
+
+    const completeRes = await requestJson(`${API_BASE}/file/upload/complete?upload_id=${encodeURIComponent(uploadId)}`, {
+        method: "POST",
+        headers: getAuthHeaders()
+    });
+
+    if (completeRes.data.code !== 200) {
+        throw new Error(completeRes.data.message || "完成上传失败");
+    }
+
+    state.upload.progress = 100;
+    state.upload.statusText = "上传完成";
+    render();
+}
+
+async function calculateSHA256Hex(arrayBuffer) {
+    const digest = await crypto.subtle.digest("SHA-256", arrayBuffer);
+    return Array.from(new Uint8Array(digest))
+        .map((v) => v.toString(16).padStart(2, "0"))
+        .join("");
 }
 
 async function downloadFile(fileId) {
@@ -1120,7 +1275,7 @@ async function downloadFile(fileId) {
     if (!file) return;
 
     try {
-        const res = await fetch(`${API_BASE}/file/download?id=${fileId}`, {
+        const res = await fetch(`${API_BASE}/file/download/stream?id=${fileId}`, {
             headers: getAuthHeaders()
         });
         if (!res.ok) {
@@ -1497,6 +1652,9 @@ async function handleLogout() {
 function clearAuthState() {
     stopMessagePolling();
     stopStatusPolling();
+    if (state.upload.abortController) {
+        state.upload.abortController.abort();
+    }
     state.currentToken = "";
     state.currentUser = "";
     state.currentUserId = 0;
@@ -1519,13 +1677,7 @@ function clearAuthState() {
     state.contextMenu = { visible: false, x: 0, y: 0, fileId: null };
     state.dragActive = false;
     state.dragDepth = 0;
-    state.upload = {
-        inProgress: false,
-        progress: 0,
-        filename: "",
-        currentIndex: 0,
-        total: 0
-    };
+    resetUploadState();
     state.serverStatus = {
         summary: "等待同步",
         detail: "服务器状态会在登录后自动刷新。",

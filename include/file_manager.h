@@ -39,6 +39,9 @@ struct UploadSession
     long long total_size;
     int total_chunks;
     std::string mime_type;
+    std::string created_at;
+    std::string expires_at;
+    std::string status;
 };
 
 // 分块信息结构体
@@ -61,6 +64,9 @@ struct UploadProgress
     long long uploaded_size;
     double progress;
     std::vector<int> failed_chunks;
+    std::string status;
+    bool exists = false;
+    bool expired = false;
 };
 
 // 文件管理类，需要对mysql和路径（有了路径就知道文件）进行封装，提供文件上传、下载、删除、重命名、搜索等功能
@@ -90,6 +96,8 @@ public:
     std::optional<FileInfo> complete_upload(
         const std::string &upload_id,
         int user_id);
+
+    bool cancel_upload(const std::string &upload_id, int user_id);
 
     // 文件上传
     std::optional<FileInfo> upload_file(int user_id,
@@ -153,10 +161,12 @@ private:
 
     // 临时目录路径
     std::string get_temp_dir(const std::string &upload_id);
+    std::string get_chunk_path(const std::string &upload_id, int chunk_index);
     // 合并所有.part文件
     bool merge_chunks(const std::string &upload_id,
                       int total_chunks,
                       const std::string &dest_path);
+    std::string calculate_sha256(const char *data, size_t size);
 };
 
 #endif // FILE_MANAGER_H
