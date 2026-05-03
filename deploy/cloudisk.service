@@ -1,0 +1,15 @@
+[Unit]
+Description=Lightweight Comm Server
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/lightweight_comm_server
+EnvironmentFile=/opt/lightweight_comm_server/.env
+ExecStart=/opt/lightweight_comm_server/build/lightweight_comm_server
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

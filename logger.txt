@@ -1,0 +1,78 @@
+[2026-03-03 00:42:51] [INFO] Server listening on port 8080
+[2026-03-03 00:47:35] [INFO] Received shutdown signal...
+[2026-03-04 01:02:47] [INFO] Server listening on port 8080
+[2026-03-04 01:03:27] [INFO] Received shutdown signal...
+[2026-03-06 03:07:24] [INFO] Server listening on port 8080
+[2026-03-06 03:07:36] [INFO] Received shutdown signal...
+[2026-03-23 15:03:02] [ERROR] Bind failed on port 8080
+[2026-03-23 15:04:18] [INFO] Server listening on port 8080
+[2026-03-23 15:10:30] [INFO] Received shutdown signal...
+[2026-04-20 16:01:47] [INFO] Server listening on port 8080
+[2026-04-20 16:08:13] [INFO] Received shutdown signal...
+[2026-04-20 16:09:04] [INFO] Server listening on port 8080
+[2026-04-20 16:13:05] [INFO] Received shutdown signal...
+[2026-04-27 16:25:00] [INFO] Server listening on port 8080
+[2026-04-27 16:25:12] [DEBUG] Received Register Request. Body: {"username":"func_user_1777278312_a","email":"func_user_1777278312_a@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:25:12] [DEBUG] Parsed: user=func_user_1777278312_a, email=func_user_1777278312_a@example.com, pass=Passw0rd!123
+[2026-04-27 16:25:12] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777278312_a' OR email = 'func_user_1777278312_a@example.com'
+[2026-04-27 16:25:12] [DEBUG] Check Rows: 0
+[2026-04-27 16:25:12] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('func_user_1777278312_a', 'func_user_1777278312_a@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-04-27 16:25:12] [DEBUG] Insert OK
+[2026-04-27 16:25:13] [DEBUG] Received Register Request. Body: {"username":"func_user_1777278312_a","email":"func_user_1777278312_a@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:25:13] [DEBUG] Parsed: user=func_user_1777278312_a, email=func_user_1777278312_a@example.com, pass=Passw0rd!123
+[2026-04-27 16:25:13] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777278312_a' OR email = 'func_user_1777278312_a@example.com'
+[2026-04-27 16:25:13] [DEBUG] Check Rows: 1
+[2026-04-27 16:25:13] [WARN] Registration failed in UserManager
+[2026-04-27 16:25:13] [DEBUG] Received Register Request. Body: {"username":"func_user_1777278312_b","email":"func_user_1777278312_b@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:25:13] [DEBUG] Parsed: user=func_user_1777278312_b, email=func_user_1777278312_b@example.com, pass=Passw0rd!123
+[2026-04-27 16:25:13] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777278312_b' OR email = 'func_user_1777278312_b@example.com'
+[2026-04-27 16:25:13] [DEBUG] Check Rows: 0
+[2026-04-27 16:25:13] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('func_user_1777278312_b', 'func_user_1777278312_b@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-04-27 16:25:13] [DEBUG] Insert OK
+[2026-04-27 16:25:13] [DEBUG] Received Register Request. Body: {"username":"broken_1777278312","email":"broken_1777278312@example.com"}
+[2026-04-27 16:25:13] [DEBUG] Parsed: user=broken_1777278312, email=broken_1777278312@example.com, pass=
+[2026-04-27 16:25:13] [WARN] Missing fields!
+[2026-04-27 16:29:05] [DEBUG] Received Register Request. Body: {"username":"concurrent_user_a_1777278545666144412","email":"concurrent_user_a_1777278545666144412@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:29:05] [DEBUG] Parsed: user=concurrent_user_a_1777278545666144412, email=concurrent_user_a_1777278545666144412@example.com, pass=Passw0rd!123
+[2026-04-27 16:29:05] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'concurrent_user_a_1777278545666144412' OR email = 'concurrent_user_a_1777278545666144412@example.com'
+[2026-04-27 16:29:05] [DEBUG] Check Rows: 0
+[2026-04-27 16:29:05] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('concurrent_user_a_1777278545666144412', 'concurrent_user_a_1777278545666144412@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-04-27 16:29:05] [DEBUG] Insert OK
+[2026-04-27 16:29:05] [DEBUG] Received Register Request. Body: {"username":"concurrent_user_b_1777278545666144412","email":"concurrent_user_b_1777278545666144412@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:29:05] [DEBUG] Parsed: user=concurrent_user_b_1777278545666144412, email=concurrent_user_b_1777278545666144412@example.com, pass=Passw0rd!123
+[2026-04-27 16:29:05] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'concurrent_user_b_1777278545666144412' OR email = 'concurrent_user_b_1777278545666144412@example.com'
+[2026-04-27 16:29:05] [DEBUG] Check Rows: 0
+[2026-04-27 16:29:05] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('concurrent_user_b_1777278545666144412', 'concurrent_user_b_1777278545666144412@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-04-27 16:29:05] [DEBUG] Insert OK
+[2026-04-27 16:31:11] [DEBUG] Received Register Request. Body: {"username":"func_user_1777278670_a","email":"func_user_1777278670_a@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:31:11] [DEBUG] Parsed: user=func_user_1777278670_a, email=func_user_1777278670_a@example.com, pass=Passw0rd!123
+[2026-04-27 16:31:11] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777278670_a' OR email = 'func_user_1777278670_a@example.com'
+[2026-04-27 16:31:11] [DEBUG] Check Rows: 0
+[2026-04-27 16:31:11] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('func_user_1777278670_a', 'func_user_1777278670_a@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-04-27 16:31:11] [DEBUG] Insert OK
+[2026-04-27 16:31:11] [DEBUG] Received Register Request. Body: {"username":"func_user_1777278670_a","email":"func_user_1777278670_a@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:31:11] [DEBUG] Parsed: user=func_user_1777278670_a, email=func_user_1777278670_a@example.com, pass=Passw0rd!123
+[2026-04-27 16:31:11] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777278670_a' OR email = 'func_user_1777278670_a@example.com'
+[2026-04-27 16:31:11] [DEBUG] Check Rows: 1
+[2026-04-27 16:31:11] [WARN] Registration failed in UserManager
+[2026-04-27 16:31:11] [DEBUG] Received Register Request. Body: {"username":"func_user_1777278670_b","email":"func_user_1777278670_b@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:31:11] [DEBUG] Parsed: user=func_user_1777278670_b, email=func_user_1777278670_b@example.com, pass=Passw0rd!123
+[2026-04-27 16:31:11] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777278670_b' OR email = 'func_user_1777278670_b@example.com'
+[2026-04-27 16:31:11] [DEBUG] Check Rows: 0
+[2026-04-27 16:31:11] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('func_user_1777278670_b', 'func_user_1777278670_b@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-04-27 16:31:11] [DEBUG] Insert OK
+[2026-04-27 16:31:11] [DEBUG] Received Register Request. Body: {"username":"broken_1777278670","email":"broken_1777278670@example.com"}
+[2026-04-27 16:31:11] [DEBUG] Parsed: user=broken_1777278670, email=broken_1777278670@example.com, pass=
+[2026-04-27 16:31:11] [WARN] Missing fields!
+[2026-04-27 16:32:03] [DEBUG] Received Register Request. Body: {"username":"perf_user_1777278723_a","email":"perf_user_1777278723_a@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:32:03] [DEBUG] Parsed: user=perf_user_1777278723_a, email=perf_user_1777278723_a@example.com, pass=Passw0rd!123
+[2026-04-27 16:32:03] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'perf_user_1777278723_a' OR email = 'perf_user_1777278723_a@example.com'
+[2026-04-27 16:32:03] [DEBUG] Check Rows: 0
+[2026-04-27 16:32:03] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('perf_user_1777278723_a', 'perf_user_1777278723_a@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-04-27 16:32:03] [DEBUG] Insert OK
+[2026-04-27 16:32:03] [DEBUG] Received Register Request. Body: {"username":"perf_user_1777278723_b","email":"perf_user_1777278723_b@example.com","password":"Passw0rd!123"}
+[2026-04-27 16:32:03] [DEBUG] Parsed: user=perf_user_1777278723_b, email=perf_user_1777278723_b@example.com, pass=Passw0rd!123
+[2026-04-27 16:32:03] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'perf_user_1777278723_b' OR email = 'perf_user_1777278723_b@example.com'
+[2026-04-27 16:32:03] [DEBUG] Check Rows: 0
+[2026-04-27 16:32:03] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('perf_user_1777278723_b', 'perf_user_1777278723_b@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-04-27 16:32:03] [DEBUG] Insert OK

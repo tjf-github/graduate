@@ -1,0 +1,313 @@
+#include "server.h"
+#include "http_handler.h"
+#include "http_parser.h"
+#include "logger.h"
+#include <iostream>
+#include <cstring>
+#include <fstream>
+#include <sstream>
+#include <vector>
+// 线程头文件
+#include <thread>
+#include <chrono>
+
+#ifdef _WIN32
+// #include <winsock2.h>
+// #include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#include <io.h>
+#define close closesocket
+#define usleep(x) Sleep((x) / 1000)
+#else
+#include <unistd.h>
+#include <sys/types.h>
+// socket相关头文件
+#include <sys/socket.h>
+// 网络地址结构体
+#include <netinet/in.h>
+// IP地址转换函数
+#include <arpa/inet.h>
+#endif
+// 写入数据到socket，确保全部写入
+namespace
+{
+bool write_all(int fd, const char *data, size_t len)
+{
+    size_t written = 0;
+    while (written < len)
+    {
+        ssize_t n = write(fd, data + written, len - written);
+        if (n <= 0)
+        {
+            return false;
+        }
+        written += static_cast<size_t>(n);
+    }
+    return true;
+}
+} // namespace
+
+CloudDiskServer::CloudDiskServer(int p, const DBConfig &db_config,
+                                 const std::string &storage_path)
+    : port(p), server_fd(-1), running(false)
+{
+
+    // 初始化线程池
+    thread_pool = std::make_unique<ThreadPool>(50);
+
+    // 初始化数据库连接池
+    db_pool = std::make_shared<DBConnectionPool>(db_config, 50);
+
+    // 初始化管理器
+    user_manager = std::make_shared<UserManager>(db_pool);
+    file_manager = std::make_shared<FileManager>(db_pool, storage_path);
+    session_manager = std::make_shared<SessionManager>(30); // 30分钟超时
+    client_manager = std::make_shared<ClientManager>();
+
+    // 初始化HTTP处理器
+    http_handler = std::make_shared<HttpHandler>(
+        user_manager, file_manager, session_manager, client_manager);
+}
+
+CloudDiskServer::~CloudDiskServer()
+{
+    stop();
+}
+
+bool CloudDiskServer::create_socket()
+{
+    // tcpsocket，AF_INET--IPv4，SOCK_STREAM--TCP
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd == -1)
+    {
+        std::cerr << "Failed to create socket" << std::endl;
+        return false;
+    }
+
+    // 设置socket选项
+    int opt = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR,
+                   &opt, sizeof(opt)) < 0)
+    {
+        std::cerr << "setsockopt failed" << std::endl;
+        close(server_fd);
+        return false;
+    }
+
+    // 绑定地址
+    struct sockaddr_in address;
+    // memset--将sin_zero字段填充为0，确保结构体的正确性和兼容性
+    memset(address.sin_zero, '\0', sizeof(address.sin_zero));
+    address.sin_family = AF_INET;
+    // INADDR_ANY--绑定到所有可用接口，允许从任何IP地址连接
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    // htons--主机字节序转网络字节序，确保跨平台兼容
+    address.sin_port = htons(port);
+
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
+    {
+        LOG_ERROR("Bind failed on port " + std::to_string(port));
+        close(server_fd);
+        return false;
+    }
+
+    // 开始监听
+    if (listen(server_fd, 50) < 0)
+    {
+        LOG_ERROR("Listen failed");
+        close(server_fd);
+        return false;
+    }
+
+    LOG_INFO("Server listening on port " + std::to_string(port));
+    return true;
+}
+
+bool CloudDiskServer::start()
+{
+    if (!create_socket())
+    {
+        return false;
+    }
+
+    running = true;
+
+    // 启动会话清理线程
+    std::thread cleanup_thread([this]()
+                               { cleanup_sessions_periodically(); });
+    cleanup_thread.detach();
+
+    return true;
+}
+
+void CloudDiskServer::stop()
+{
+    running = false;
+
+    if (server_fd != -1)
+    {
+        close(server_fd);
+        server_fd = -1;
+    }
+
+    std::cout << "Server stopped" << std::endl;
+}
+
+// 处理客户端连接
+void CloudDiskServer::handle_client(int client_fd)
+{
+    const int BUFFER_SIZE = 8192;
+    char buffer[BUFFER_SIZE];
+
+    // 读取请求
+    std::string request_data;
+    ssize_t bytes_read;
+
+    // 读取cilent请求数据，直到读取完整的HTTP请求头和可能的请求体
+    while ((bytes_read = read(client_fd, buffer, BUFFER_SIZE)) > 0)
+    {
+        request_data.append(buffer, bytes_read);
+
+        // 检查是否读取完整
+        if (request_data.find("\r\n\r\n") != std::string::npos)
+        {
+            // 检查是否有Content-Length
+            size_t cl_pos = request_data.find("Content-Length:");
+            if (cl_pos != std::string::npos)
+            {
+                size_t cl_end = request_data.find("\r\n", cl_pos);
+                std::string cl_str = request_data.substr(cl_pos + 15, cl_end - cl_pos - 15);
+                int content_length = std::stoi(cl_str);
+
+                size_t header_end = request_data.find("\r\n\r\n");
+                int body_length = request_data.length() - header_end - 4;
+
+                if (body_length < content_length)
+                {
+                    continue; // 继续读取
+                }
+            }
+            break;
+        }
+    }
+
+    if (bytes_read < 0)
+    {
+        std::cerr << "Error reading from client" << std::endl;
+        client_manager->remove_client(client_fd);
+        close(client_fd);
+        return;
+    }
+
+    // 解析请求
+    HttpRequest request = HttpParser::parse(request_data);
+
+    // 处理请求
+    HttpResponse response = http_handler->handle_request(request);
+
+    if (response.stream_file)
+    {
+        std::ostringstream header_stream;
+        header_stream << "HTTP/1.1 " << response.status_code << " " << response.status_text << "\r\n";
+        for (const auto &header : response.headers)
+        {
+            header_stream << header.first << ": " << header.second << "\r\n";
+        }
+        if (response.headers.find("Content-Length") == response.headers.end())
+        {
+            header_stream << "Content-Length: " << response.stream_file_size << "\r\n";
+        }
+        if (response.headers.find("Connection") == response.headers.end())
+        {
+            header_stream << "Connection: close\r\n";
+        }
+        header_stream << "\r\n";
+
+        std::string header_text = header_stream.str();
+        if (!write_all(client_fd, header_text.c_str(), header_text.size()))
+        {
+            LOG_WARN("Failed to write response header");
+        }
+        else
+        {
+            std::ifstream input(response.stream_file_path, std::ios::binary);
+            if (!input)
+            {
+                LOG_WARN("Failed to open stream file: " + response.stream_file_path);
+            }
+            else
+            {
+                std::vector<char> buffer(64 * 1024);
+                while (input)
+                {
+                    input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+                    std::streamsize n = input.gcount();
+                    if (n <= 0)
+                    {
+                        break;
+                    }
+                    if (!write_all(client_fd, buffer.data(), static_cast<size_t>(n)))
+                    {
+                        LOG_WARN("Failed to stream response body");
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        // 发送响应
+        std::string response_str = HttpParser::build_response(response);
+        if (!write_all(client_fd, response_str.c_str(), response_str.length()))
+        {
+            LOG_WARN("Failed to write response to client");
+        }
+    }
+
+    // 关闭连接
+    client_manager->remove_client(client_fd);
+    close(client_fd);
+    std::cout << "Client disconnected" << std::endl;
+}
+
+// 服务器主循环
+void CloudDiskServer::run()
+{
+    struct sockaddr_in client_address;
+    while (running)
+    {
+        socklen_t client_len = sizeof(client_address);
+        int client_fd = accept(server_fd, (struct sockaddr *)&client_address,
+                               &client_len);
+
+        if (client_fd < 0)
+        {
+            if (running)
+            {
+                std::cerr << "Accept failed" << std::endl;
+            }
+            continue;
+        }
+
+        char ip_buffer[INET_ADDRSTRLEN] = {0};
+        const char *ip_ptr = inet_ntop(AF_INET, &client_address.sin_addr,
+                                       ip_buffer, sizeof(ip_buffer));
+        const std::string ip_str = ip_ptr ? ip_ptr : "";
+        const int client_port = ntohs(client_address.sin_port);
+        client_manager->add_client(client_fd, ip_str, client_port);
+
+        // 将客户端处理提交到线程池
+        thread_pool->enqueue([this, client_fd]()
+                             { this->handle_client(client_fd); });
+    }
+}
+
+void CloudDiskServer::cleanup_sessions_periodically()
+{
+    while (running)
+    {
+        std::this_thread::sleep_for(std::chrono::minutes(5));
+        session_manager->cleanup_expired_sessions();
+    }
+}

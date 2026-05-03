@@ -1,0 +1,51 @@
+# 编译产物
+build/
+*.o
+*.a
+*.so
+*.exe
+cloudisk_server
+
+# 存储目录
+storage/
+*.uploaded
+
+# 配置文件
+.env
+*.conf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志文件
+*.log
+logs/
+
+# 数据库
+*.db
+*.sqlite
+
+# 测试文件
+test_*.txt
+sample_*
+
+# Docker volumes
+mysql_data/
+storage_data/
+
+# 临时文件
+*.tmp
+temp/
+tmp/
+
+# MacOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
