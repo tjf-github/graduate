@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -u
-s
 PORT="${PORT:-8080}"
 BASE_URL="http://127.0.0.1:${PORT}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -6,14 +6,14 @@ project(lightweight_comm_server)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# MySQL连接器路径 (根据实际安装路径调整)
+set(MYSQL_CONNECTOR_INCLUDE "/usr/include/mysql")
+set(MYSQL_CONNECTOR_LIB "/usr/lib/x86_64-linux-gnu")
+
 # 查找必要的库
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_library(MYSQLCLIENT_LIB mysqlclient PATHS ${MYSQL_CONNECTOR_LIB} REQUIRED)
-
-# MySQL连接器路径 (根据实际安装路径调整)
-set(MYSQL_CONNECTOR_INCLUDE "/usr/include/mysql")
-set(MYSQL_CONNECTOR_LIB "/usr/lib/x86_64-linux-gnu")
 
 # 包含目录
 include_directories(
@@ -66,7 +66,9 @@ if(WIN32)
     # Windows 下可能需要手动指定路径或通过 VCPKG 查找
     # include_directories("C:/Path/To/MySQL/Include")
     # link_directories("C:/Path/To/MySQL/Lib")
-    link_libraries(ws2_32 rpcrt4) # Winsock 和 UUID 库
+    target_link_libraries(lightweight_comm_server PRIVATE ws2_32 rpcrt4) # Winsock 和 UUID 库
 else()
     # 原有的 Linux 配置...
 endif()
+
+install(TARGETS lightweight_comm_server DESTINATION bin)

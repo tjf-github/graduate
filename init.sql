@@ -1,23 +1,17 @@
--- 云盘系统数据库初始化脚本
-
--- 创建数据库
-CREATE DATABASE IF NOT EXISTS cloudisk DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
+CREATE DATABASE IF NOT EXISTS cloudisk;
 USE cloudisk;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(64) NOT NULL,
-    storage_used BIGINT DEFAULT 0,
-    storage_limit BIGINT DEFAULT 10737418240, -- 10GB
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    storage_used BIGINT NOT NULL DEFAULT 0,
+    storage_limit BIGINT NOT NULL DEFAULT 10737418240,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_username (username),
-    INDEX idx_email (email)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 -- 文件表
 CREATE TABLE IF NOT EXISTS files (
@@ -25,123 +19,85 @@ CREATE TABLE IF NOT EXISTS files (
     user_id INT NOT NULL,
     filename VARCHAR(255) NOT NULL,
     original_filename VARCHAR(255) NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
+    file_path VARCHAR(512) NOT NULL,
     file_size BIGINT NOT NULL,
     mime_type VARCHAR(100),
+    share_code VARCHAR(64) UNIQUE,
     upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    share_code VARCHAR(32) UNIQUE,
-    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    INDEX idx_user_id (user_id),
-    INDEX idx_filename (original_filename),
-    INDEX idx_upload_date (upload_date)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
--- 聊天消息表
-CREATE TABLE IF NOT EXISTS messages (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    sender_id INT NOT NULL,
-    receiver_id INT NOT NULL,
-    content TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_id) REFERENCES users (id) ON DELETE CASCADE,
-    FOREIGN KEY (receiver_id) REFERENCES users (id) ON DELETE CASCADE,
-    INDEX idx_receiver (receiver_id),
-    INDEX idx_conversation (sender_id, receiver_id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
--- 分享链接表（可选功能）
-CREATE TABLE IF NOT EXISTS share_links (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    file_id INT NOT NULL,
-    user_id INT NOT NULL,
-    share_code VARCHAR(32) NOT NULL UNIQUE,
-    expire_date TIMESTAMP NULL,
-    access_count INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    INDEX idx_share_code (share_code),
-    INDEX idx_file_id (file_id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- 文件夹表（可选功能）
-CREATE TABLE IF NOT EXISTS folders (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    folder_name VARCHAR(255) NOT NULL,
-    parent_id INT DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_id) REFERENCES folders (id) ON DELETE CASCADE,
-    INDEX idx_user_id (user_id),
-    INDEX idx_parent_id (parent_id)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-
--- 上传会话表
+-- 分片上传会话表
 CREATE TABLE IF NOT EXISTS upload_sessions (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    upload_id VARCHAR(64) UNIQUE NOT NULL,
+    upload_id VARCHAR(64) NOT NULL UNIQUE,
     total_chunks INT NOT NULL,
     file_size BIGINT NOT NULL,
     original_filename VARCHAR(255) NOT NULL,
-    mime_type VARCHAR(100) DEFAULT '',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    mime_type VARCHAR(100),
+    status VARCHAR(32) NOT NULL DEFAULT 'uploading',
     expires_at TIMESTAMP NOT NULL,
-    status ENUM('uploading', 'completed', 'cancelled') DEFAULT 'uploading',
-    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 分块记录表
+-- 分片上传块表
 CREATE TABLE IF NOT EXISTS upload_chunks (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     upload_id VARCHAR(64) NOT NULL,
     chunk_index INT NOT NULL,
-    chunk_hash VARCHAR(64) DEFAULT '',
+    chunk_hash VARCHAR(64) NOT NULL,
     chunk_size BIGINT NOT NULL,
-    status ENUM('pending', 'completed', 'failed') DEFAULT 'pending',
-    uploaded_at TIMESTAMP NULL,
-    UNIQUE KEY uq_upload_chunk (upload_id, chunk_index),
-    FOREIGN KEY (upload_id) REFERENCES upload_sessions (upload_id) ON DELETE CASCADE
+    status VARCHAR(32) NOT NULL DEFAULT 'completed',
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_upload_chunk (upload_id, chunk_index),
+    FOREIGN KEY (upload_id) REFERENCES upload_sessions(upload_id) ON DELETE CASCADE
 );
 
--- 插入测试用户（密码：test123，哈希值为SHA256）
-INSERT INTO
-    users (
-        username,
-        email,
-        password_hash,
-        storage_used,
-        storage_limit
-    )
-VALUES (
-        'testuser',
-        'test@example.com',
-        'ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae',
-        0,
-        10737418240
-    )
-ON DUPLICATE KEY UPDATE
-    username = username;
+-- 会话表（当前代码主要使用内存会话，这里保留库表）
+CREATE TABLE IF NOT EXISTS sessions (
+    id VARCHAR(100) PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
--- 显示表结构
-SHOW TABLES;
-
-DESCRIBE users;
-
-DESCRIBE files;
-
+-- 消息表
 CREATE TABLE IF NOT EXISTS messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sender_id INT NOT NULL,
     receiver_id INT NOT NULL,
     content TEXT NOT NULL,
-    is_read TINYINT(1) DEFAULT 0,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_id) REFERENCES users (id) ON DELETE CASCADE,
-    FOREIGN KEY (receiver_id) REFERENCES users (id) ON DELETE CASCADE,
-    INDEX idx_receiver (receiver_id),
-    INDEX idx_conversation (sender_id, receiver_id)
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- 可选分享码表（当前代码通过 files.share_code 工作，保留此表用于后续扩展）
+CREATE TABLE IF NOT EXISTS share_codes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    file_id INT NOT NULL,
+    code VARCHAR(64) NOT NULL UNIQUE,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL,
+    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_user_id ON files(user_id);
+CREATE INDEX idx_files_user_upload_date ON files(user_id, upload_date);
+CREATE INDEX idx_files_share_code ON files(share_code);
+
+CREATE INDEX idx_upload_sessions_user_id ON upload_sessions(user_id);
+CREATE INDEX idx_upload_sessions_expires_at ON upload_sessions(expires_at);
+CREATE INDEX idx_upload_chunks_upload_id_status ON upload_chunks(upload_id, status);
+
+CREATE INDEX idx_session_user ON sessions(user_id);
+CREATE INDEX idx_messages_receiver_sender_read ON messages(receiver_id, sender_id, is_read);
+CREATE INDEX idx_messages_created_at ON messages(created_at);

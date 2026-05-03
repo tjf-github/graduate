@@ -76,3 +76,58 @@
 [2026-04-27 16:32:03] [DEBUG] Check Rows: 0
 [2026-04-27 16:32:03] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('perf_user_1777278723_b', 'perf_user_1777278723_b@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
 [2026-04-27 16:32:03] [DEBUG] Insert OK
+[2026-05-03 22:21:04] [INFO] Server listening on port 8080
+[2026-05-03 22:21:20] [DEBUG] Received Register Request. Body: {"username":"test1","email":"tangjianfeng039@gmail.com","password":"123456"}
+[2026-05-03 22:21:20] [DEBUG] Parsed: user=test1, email=tangjianfeng039@gmail.com, pass=123456
+[2026-05-03 22:21:20] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'test1' OR email = 'tangjianfeng039@gmail.com'
+[2026-05-03 22:21:20] [DEBUG] Check Rows: 0
+[2026-05-03 22:21:20] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('test1', 'tangjianfeng039@gmail.com', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 0, 10737418240)
+[2026-05-03 22:21:20] [ERROR] Insert Failed
+[2026-05-03 22:21:20] [WARN] Registration failed in UserManager
+[2026-05-03 22:23:02] [INFO] Received shutdown signal...
+[2026-05-03 22:32:21] [INFO] Server listening on port 8080
+[2026-05-03 22:32:22] [DEBUG] Received Register Request. Body: {"username":"func_user_1777818742_a","email":"func_user_1777818742_a@example.com","password":"Passw0rd!123"}
+[2026-05-03 22:32:22] [DEBUG] Parsed: user=func_user_1777818742_a, email=func_user_1777818742_a@example.com, pass=Passw0rd!123
+[2026-05-03 22:32:22] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777818742_a' OR email = 'func_user_1777818742_a@example.com'
+[2026-05-03 22:32:22] [DEBUG] Check Rows: 0
+[2026-05-03 22:32:22] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('func_user_1777818742_a', 'func_user_1777818742_a@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-05-03 22:32:22] [ERROR] Insert Failed
+[2026-05-03 22:32:22] [WARN] Registration failed in UserManager
+[2026-05-03 22:32:22] [DEBUG] Received Register Request. Body: {"username":"func_user_1777818742_a","email":"func_user_1777818742_a@example.com","password":"Passw0rd!123"}
+[2026-05-03 22:32:22] [DEBUG] Parsed: user=func_user_1777818742_a, email=func_user_1777818742_a@example.com, pass=Passw0rd!123
+[2026-05-03 22:32:22] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777818742_a' OR email = 'func_user_1777818742_a@example.com'
+[2026-05-03 22:32:22] [DEBUG] Check Rows: 0
+[2026-05-03 22:32:22] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('func_user_1777818742_a', 'func_user_1777818742_a@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-05-03 22:32:22] [ERROR] Insert Failed
+[2026-05-03 22:32:22] [WARN] Registration failed in UserManager
+[2026-05-03 22:32:22] [DEBUG] Received Register Request. Body: {"username":"func_user_1777818742_b","email":"func_user_1777818742_b@example.com","password":"Passw0rd!123"}
+[2026-05-03 22:32:22] [DEBUG] Parsed: user=func_user_1777818742_b, email=func_user_1777818742_b@example.com, pass=Passw0rd!123
+[2026-05-03 22:32:22] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'func_user_1777818742_b' OR email = 'func_user_1777818742_b@example.com'
+[2026-05-03 22:32:22] [DEBUG] Check Rows: 0
+[2026-05-03 22:32:22] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('func_user_1777818742_b', 'func_user_1777818742_b@example.com', 'e6549a073845630d0b6793320edc608787b968055ccddb17dea1f7d1ebe38f59', 0, 10737418240)
+[2026-05-03 22:32:22] [ERROR] Insert Failed
+[2026-05-03 22:32:22] [WARN] Registration failed in UserManager
+[2026-05-03 22:32:22] [DEBUG] Received Register Request. Body: {"username":"broken_1777818742","email":"broken_1777818742@example.com"}
+[2026-05-03 22:32:22] [DEBUG] Parsed: user=broken_1777818742, email=broken_1777818742@example.com, pass=
+[2026-05-03 22:32:22] [WARN] Missing fields!
+[2026-05-03 22:32:41] [DEBUG] Received Register Request. Body: {"username":"test2","email":"123456@qq.com","password":"123456"}
+[2026-05-03 22:32:41] [DEBUG] Parsed: user=test2, email=123456@qq.com, pass=123456
+[2026-05-03 22:32:41] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'test2' OR email = '123456@qq.com'
+[2026-05-03 22:32:41] [DEBUG] Check Rows: 0
+[2026-05-03 22:32:41] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('test2', '123456@qq.com', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 0, 10737418240)
+[2026-05-03 22:32:41] [ERROR] Insert Failed
+[2026-05-03 22:32:41] [WARN] Registration failed in UserManager
+[2026-05-03 22:32:59] [DEBUG] Received Register Request. Body: {"username":"test2","email":"755381698@qq.com","password":"123456"}
+[2026-05-03 22:32:59] [DEBUG] Parsed: user=test2, email=755381698@qq.com, pass=123456
+[2026-05-03 22:32:59] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'test2' OR email = '755381698@qq.com'
+[2026-05-03 22:32:59] [DEBUG] Check Rows: 0
+[2026-05-03 22:32:59] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('test2', '755381698@qq.com', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 0, 10737418240)
+[2026-05-03 22:32:59] [ERROR] Insert Failed
+[2026-05-03 22:32:59] [WARN] Registration failed in UserManager
+[2026-05-03 22:33:19] [DEBUG] Received Register Request. Body: {"username":"test3","email":"3546257@qq.com","password":"123456"}
+[2026-05-03 22:33:19] [DEBUG] Parsed: user=test3, email=3546257@qq.com, pass=123456
+[2026-05-03 22:33:19] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'test3' OR email = '3546257@qq.com'
+[2026-05-03 22:33:19] [DEBUG] Check Rows: 0
+[2026-05-03 22:33:19] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('test3', '3546257@qq.com', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 0, 10737418240)
+[2026-05-03 22:33:19] [ERROR] Insert Failed
+[2026-05-03 22:33:19] [WARN] Registration failed in UserManager
