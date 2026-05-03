@@ -24,7 +24,7 @@ void signal_handler(int signal)
 int main(int argc, char *argv[])
 {
     // 默认配置
-    int port = 8080;
+    int port = 9090;
     std::string storage_path = "./storage";
     std::string static_dir = "static";
 

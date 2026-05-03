@@ -131,3 +131,11 @@
 [2026-05-03 22:33:19] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('test3', '3546257@qq.com', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 0, 10737418240)
 [2026-05-03 22:33:19] [ERROR] Insert Failed
 [2026-05-03 22:33:19] [WARN] Registration failed in UserManager
+[2026-05-03 22:45:53] [ERROR] Bind failed on port 8080
+[2026-05-03 23:06:27] [INFO] Server listening on port 9090
+[2026-05-03 23:06:39] [DEBUG] Received Register Request. Body: {"username":"test1","email":"tangjianfeng039@gmail.com","password":"123456"}
+[2026-05-03 23:06:39] [DEBUG] Parsed: user=test1, email=tangjianfeng039@gmail.com, pass=123456
+[2026-05-03 23:06:39] [DEBUG] Register Query: SELECT id FROM users WHERE username = 'test1' OR email = 'tangjianfeng039@gmail.com'
+[2026-05-03 23:06:39] [DEBUG] Check Rows: 0
+[2026-05-03 23:06:39] [DEBUG] Insert Query: INSERT INTO users (username, email, password_hash, storage_used, storage_limit) VALUES ('test1', 'tangjianfeng039@gmail.com', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 0, 10737418240)
+[2026-05-03 23:06:39] [DEBUG] Insert OK

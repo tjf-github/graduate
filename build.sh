@@ -14,11 +14,46 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${PROJECT_DIR}/build"
 BINARY_PATH="${BUILD_DIR}/lightweight_comm_server"
 CPU_COUNT="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)"
+HEALTH_CHECK_CANDIDATES=(
+    "${PROJECT_DIR}/scripts/project_health_check.sh"
+    "${PROJECT_DIR}/tools/project_health_check.sh"
+    "${PROJECT_DIR}/project_health_check.sh"
+)
+LOGIC_TEST_CANDIDATES=(
+    "${PROJECT_DIR}/scripts/run_logic_tests.sh"
+    "${PROJECT_DIR}/tools/run_logic_tests.sh"
+    "${PROJECT_DIR}/run_logic_tests.sh"
+    "${PROJECT_DIR}/tests/functional_test.sh"
+)
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $*"; }
 log_ok() { echo -e "${GREEN}[ OK ]${NC} $*"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_err() { echo -e "${RED}[FAIL]${NC} $*"; }
+
+find_existing_path() {
+    local p
+    for p in "$@"; do
+        if [[ -e "$p" ]]; then
+            echo "$p"
+            return 0
+        fi
+    done
+    return 1
+}
+
+is_port_in_use() {
+    local port="$1"
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+        return $?
+    fi
+    if command -v netstat >/dev/null 2>&1; then
+        netstat -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "(^|:)$port$"
+        return $?
+    fi
+    return 1
+}
 
 print_banner() {
     echo -e "${GREEN}========================================${NC}"
@@ -79,6 +114,19 @@ check_dependencies() {
     if [[ "$failed" -ne 0 ]]; then
         log_err "依赖检查未通过，请先安装缺失命令后重试。"
         return 1
+    fi
+
+    if [[ -f "${PROJECT_DIR}/CMakeLists.txt" ]]; then
+        log_ok "已找到 CMakeLists.txt"
+    else
+        log_err "未找到 CMakeLists.txt，请确认在项目根目录执行脚本"
+        return 1
+    fi
+
+    if [[ -f "${PROJECT_DIR}/init.sql" ]]; then
+        log_ok "已找到 init.sql"
+    else
+        log_warn "未找到 init.sql（init-db 步骤将不可用）"
     fi
 
     log_ok "依赖检查完成"
@@ -162,8 +210,13 @@ create_config() {
     local env_file="${PROJECT_DIR}/.env"
     if [[ -f "${env_file}" ]]; then
         log_warn ".env 已存在: ${env_file}"
-        read -r -p "是否覆盖? [y/N]: " overwrite
-        if [[ ! "${overwrite}" =~ ^[Yy]$ ]]; then
+        local overwrite=""
+        if [[ -t 0 ]]; then
+            read -r -p "是否覆盖? [y/N]: " overwrite || true
+        else
+            log_info "检测到非交互环境，默认不覆盖现有 .env"
+        fi
+        if [[ ! "${overwrite:-}" =~ ^[Yy]$ ]]; then
             log_info "已跳过 .env 生成"
             return 0
         fi
@@ -215,6 +268,42 @@ run_server() {
         log_warn "未找到 .env，将使用程序内默认配置。"
     fi
 
+    local server_port="${SERVER_PORT:-8080}"
+    local db_host="${DB_HOST:-127.0.0.1}"
+    local db_port="${DB_PORT:-3306}"
+    local db_user="${DB_USER:-cloudisk}"
+    local db_password="${DB_PASSWORD:-}"
+    local db_name="${DB_NAME:-cloudisk}"
+
+    if [[ -z "${db_password}" || "${db_password}" == "change_me" ]]; then
+        log_err "数据库密码未配置正确（当前为默认值 change_me 或空）。"
+        log_warn "请先修改 .env：DB_PASSWORD=<你的真实密码>"
+        log_warn "也请确认 DB_USER=${db_user}、DB_HOST=${db_host}、DB_PORT=${db_port}、DB_NAME=${db_name}"
+        return 1
+    fi
+
+    if command -v mysqladmin >/dev/null 2>&1; then
+        if mysqladmin ping -h"${db_host}" -P"${db_port}" -u"${db_user}" -p"${db_password}" --silent >/dev/null 2>&1; then
+            log_ok "MySQL 连接预检通过: ${db_user}@${db_host}:${db_port}"
+        else
+            log_err "MySQL 连接预检失败: ${db_user}@${db_host}:${db_port}"
+            log_warn "请检查用户名/密码授权，或先执行: ./build.sh init-db"
+            return 1
+        fi
+    else
+        log_warn "未找到 mysqladmin，跳过数据库连通预检"
+    fi
+
+    if is_port_in_use "${server_port}"; then
+        log_err "端口 ${server_port} 已被占用，服务无法启动。"
+        if command -v lsof >/dev/null 2>&1; then
+            log_info "占用进程："
+            lsof -iTCP:"${server_port}" -sTCP:LISTEN || true
+        fi
+        log_warn "可修改 .env 中 SERVER_PORT，或先停止占用该端口的进程。"
+        return 1
+    fi
+
     log_info "启动服务: ${BINARY_PATH}"
     log_info "停止服务请按 Ctrl+C"
     "${BINARY_PATH}"
@@ -222,12 +311,17 @@ run_server() {
 
 run_health_check() {
     print_banner
-    local checker="${PROJECT_DIR}/scripts/project_health_check.sh"
-    if [[ -x "${checker}" ]]; then
+    local checker
+    checker="$(find_existing_path "${HEALTH_CHECK_CANDIDATES[@]}" || true)"
+    if [[ -n "${checker}" && -x "${checker}" ]]; then
         log_info "执行项目健康检查..."
         "${checker}"
     else
-        log_warn "未找到健康检查脚本: ${checker}"
+        log_warn "未找到可执行的健康检查脚本。"
+        log_warn "已尝试路径:"
+        log_warn "  - ${HEALTH_CHECK_CANDIDATES[0]}"
+        log_warn "  - ${HEALTH_CHECK_CANDIDATES[1]}"
+        log_warn "  - ${HEALTH_CHECK_CANDIDATES[2]}"
         log_warn "可先执行: ./build.sh check"
     fi
 }
@@ -254,7 +348,17 @@ full_deploy() {
     create_config
     create_storage
     log_info "如果需要初始化数据库，请执行: ./build.sh init-db"
-    log_info "如果需要运行功能测试，请执行: ./scripts/run_logic_tests.sh"
+    local logic_test
+    logic_test="$(find_existing_path "${LOGIC_TEST_CANDIDATES[@]}" || true)"
+    if [[ -n "${logic_test}" ]]; then
+        if [[ "${logic_test}" == *"tests/functional_test.sh" ]]; then
+            log_info "如果需要运行功能测试，请执行: bash ${logic_test}"
+        else
+            log_info "如果需要运行功能测试，请执行: ${logic_test}"
+        fi
+    else
+        log_warn "未找到逻辑测试脚本（已检查 scripts/tools/tests 常见位置）"
+    fi
     log_ok "完整流程完成"
 }
 
