@@ -40,13 +40,13 @@ bool Database::connect()
                             config.port,
                             nullptr, 0))
     {
-        std::cerr << "MySQL connection failed: " << mysql_error(conn) << std::endl;
+        LOG_ERROR("MySQL connection failed: " + std::string(mysql_error(conn)));
         connected = false;
         return false;
     }
 
     connected = true;
-    std::cout << "MySQL connected successfully" << std::endl;
+    LOG_INFO("MySQL connected successfully");
     return true;
 }
 
@@ -72,13 +72,13 @@ bool Database::execute(const std::string &query)
 
     if (!connected)
     {
-        std::cerr << "Database not connected" << std::endl;
+        LOG_ERROR("Database::execute called but not connected");
         return false;
     }
 
     if (mysql_query(conn, query.c_str()))
     {
-        std::cerr << "Query failed: " << mysql_error(conn) << std::endl;
+        LOG_ERROR("DB execute failed: " + std::string(mysql_error(conn)));
         return false;
     }
 
@@ -92,13 +92,13 @@ MYSQL_RES *Database::query(const std::string &query)
 
     if (!connected)
     {
-        std::cerr << "Database not connected" << std::endl;
+        LOG_ERROR("Database::query called but not connected");
         return nullptr;
     }
 
     if (mysql_query(conn, query.c_str()))
     {
-        std::cerr << "Query failed: " << mysql_error(conn) << std::endl;
+        LOG_ERROR("DB query failed: " + std::string(mysql_error(conn)));
         return nullptr;
     }
 

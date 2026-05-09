@@ -274,7 +274,7 @@ HttpResponse HttpHandler::handle_register(const HttpRequest &request)
     std::string email = parser.get_string("email");
     std::string password = parser.get_string("password");
 
-    LOG_DEBUG("Parsed: user=" + username + ", email=" + email + ", pass=" + password);
+    LOG_DEBUG("Parsed: user=" + username + ", email=" + email);
 
     if (username.empty() || email.empty() || password.empty())
     {

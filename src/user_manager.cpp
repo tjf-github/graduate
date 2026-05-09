@@ -147,10 +147,10 @@ bool UserManager::register_user(const std::string &username,
         int rows = mysql_num_rows(result);
         LOG_DEBUG("Check Rows: " + std::to_string(rows));
         mysql_free_result(result);
-        // db_pool->return_connection(db);
 
         if (rows > 0)
         {
+            db_pool->return_connection(db);
             return false; // 用户名或邮箱已存在
         }
     }
@@ -163,12 +163,11 @@ bool UserManager::register_user(const std::string &username,
         db->escape_string(email) + "', '" +
         password_hash + "', 0, 10737418240)"; // 10GB limit
 
-    LOG_DEBUG("Insert Query: " + insert_query);
     bool success = db->execute(insert_query);
     if (success)
-        LOG_DEBUG("Insert OK");
+        LOG_INFO("User registered: " + username);
     else
-        LOG_ERROR("Insert Failed");
+        LOG_ERROR("Insert Failed for user: " + username + ", db_error=" + db->get_error());
 
     db_pool->return_connection(db);
 

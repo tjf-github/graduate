@@ -80,7 +80,7 @@ bool CloudDiskServer::create_socket()
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1)
     {
-        std::cerr << "Failed to create socket" << std::endl;
+        LOG_ERROR("Failed to create socket");
         return false;
     }
 
@@ -89,7 +89,7 @@ bool CloudDiskServer::create_socket()
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR,
                    &opt, sizeof(opt)) < 0)
     {
-        std::cerr << "setsockopt failed" << std::endl;
+        LOG_ERROR("setsockopt failed");
         close(server_fd);
         return false;
     }
@@ -150,7 +150,7 @@ void CloudDiskServer::stop()
         server_fd = -1;
     }
 
-    std::cout << "Server stopped" << std::endl;
+    LOG_INFO("Server stopped");
 }
 
 // 处理客户端连接
@@ -177,7 +177,16 @@ void CloudDiskServer::handle_client(int client_fd)
             {
                 size_t cl_end = request_data.find("\r\n", cl_pos);
                 std::string cl_str = request_data.substr(cl_pos + 15, cl_end - cl_pos - 15);
-                int content_length = std::stoi(cl_str);
+                int content_length = 0;
+                try
+                {
+                    content_length = std::stoi(cl_str);
+                }
+                catch (...)
+                {
+                    LOG_WARN("Malformed Content-Length header: '" + cl_str + "'");
+                    break;
+                }
 
                 size_t header_end = request_data.find("\r\n\r\n");
                 int body_length = request_data.length() - header_end - 4;
@@ -193,7 +202,7 @@ void CloudDiskServer::handle_client(int client_fd)
 
     if (bytes_read < 0)
     {
-        std::cerr << "Error reading from client" << std::endl;
+        LOG_WARN("Error reading from client fd=" + std::to_string(client_fd));
         client_manager->remove_client(client_fd);
         close(client_fd);
         return;
@@ -268,7 +277,7 @@ void CloudDiskServer::handle_client(int client_fd)
     // 关闭连接
     client_manager->remove_client(client_fd);
     close(client_fd);
-    std::cout << "Client disconnected" << std::endl;
+    LOG_DEBUG("Client disconnected fd=" + std::to_string(client_fd));
 }
 
 // 服务器主循环
@@ -285,7 +294,7 @@ void CloudDiskServer::run()
         {
             if (running)
             {
-                std::cerr << "Accept failed" << std::endl;
+                LOG_ERROR("Accept failed");
             }
             continue;
         }
