@@ -723,43 +723,30 @@ HttpResponse HttpHandler::handle_share_download(const HttpRequest &request)
     }
 
     // 直接按分享记录中的物理路径读取，避免再次查库导致的额外失败点
-    std::ifstream file(file_info->file_path, std::ios::binary);
-    if (!file)
+    std::ifstream check(file_info->file_path, std::ios::binary);
+    if (!check)
     {
         LOG_WARN("Shared file path not readable. code=" + code +
                  ", file_id=" + std::to_string(file_info->id) +
                  ", path=" + file_info->file_path);
         return error_response_with_context(request, 404, "Shared file no longer exists", "file path missing or permission denied", file_info->user_id);
     }
-
-    std::vector<char> data;
-    file.seekg(0, std::ios::end);
-    const std::streamoff size = file.tellg();
-    if (size < 0)
-    {
-        LOG_ERROR("Failed to determine shared file size. code=" + code +
-                  ", file_id=" + std::to_string(file_info->id));
-        return error_response_with_context(request, 500, "Failed to read shared file", "tellg failed for shared file", file_info->user_id);
-    }
-    file.seekg(0, std::ios::beg);
-    data.resize(static_cast<size_t>(size));
-    if (size > 0)
-    {
-        file.read(data.data(), static_cast<std::streamsize>(size));
-        if (!file)
-        {
-            LOG_ERROR("Failed to read shared file content. code=" + code +
-                      ", file_id=" + std::to_string(file_info->id));
-            return error_response_with_context(request, 500, "Failed to read shared file", "ifstream read failed", file_info->user_id);
-        }
-    }
+    check.close();
 
     HttpResponse response;
     response.status_code = 200;
     response.status_text = "OK";
-    response.headers["Content-Type"] = "application/octet-stream";
-    response.headers["Content-Disposition"] = "attachment; filename=\"" + file_info->original_filename + "\"; filename*=UTF-8''" + url_encode_utf8(file_info->original_filename);
-    response.body = std::string(data.begin(), data.end());
+    response.stream_file = true;
+    response.stream_file_path = file_info->file_path;
+    response.stream_file_size = file_info->file_size;
+    response.headers["Content-Type"] = file_info->mime_type.empty()
+                                           ? "application/octet-stream"
+                                           : file_info->mime_type;
+    response.headers["Content-Disposition"] = "attachment; filename=\"" +
+                                              file_info->original_filename +
+                                              "\"; filename*=UTF-8''" +
+                                              url_encode_utf8(file_info->original_filename);
+    response.headers["Content-Length"] = std::to_string(file_info->file_size);
     return response;
 }
 HttpResponse HttpHandler::handle_file_download(const HttpRequest &request)

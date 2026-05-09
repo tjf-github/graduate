@@ -1646,8 +1646,14 @@ async function downloadByShareLink() {
 
         const blob = await res.blob();
         const disposition = res.headers.get("Content-Disposition") || "";
-        const match = disposition.match(/filename="([^"]+)"/);
-        const filename = match ? match[1] : "shared_file";
+        // 优先使用 RFC 5987 编码的 filename*=UTF-8''xxx，兼容中文文件名
+        const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        const asciiMatch = disposition.match(/filename="([^"]+)"/);
+        const filename = utf8Match
+            ? decodeURIComponent(utf8Match[1].trim())
+            : asciiMatch
+            ? asciiMatch[1]
+            : "shared_file";
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
