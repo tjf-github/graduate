@@ -1,6 +1,6 @@
 # Tests
 
-默认监听端口来自 [src/main.cpp](/home/tjf/graduatenew/src/main.cpp:27)，默认值是 `8080`。三个测试脚本都会读取 `PORT` 环境变量；未设置时使用 `8080`，因此基准地址统一是 `http://127.0.0.1:${PORT}`。
+默认监听端口来自 [src/main.cpp](/home/huixunli/graduate/src/main.cpp:27)，默认值是 `9090`。三个测试脚本都会读取 `PORT` 环境变量；未设置时使用 `9090`，因此基准地址统一是 `http://127.0.0.1:${PORT}`。
 
 运行前置条件：
 
@@ -12,7 +12,7 @@
 
 - `bash tests/functional_test.sh`
 - `bash tests/perf_test.sh`
-- 如需指定端口：`PORT=8080 bash tests/functional_test.sh`
+- 如需指定端口：`PORT=9090 bash tests/functional_test.sh`
 
 并发测试编译：
 
@@ -27,7 +27,7 @@ g++ -std=c++14 -Wall -Wextra -O2 -pthread tests/concurrent_test.cpp -o tests/con
 
 ```bash
 ./tests/concurrent_test
-PORT=8080 ./tests/concurrent_test
+PORT=9090 ./tests/concurrent_test
 ```
 
 补充说明：

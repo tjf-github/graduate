@@ -120,7 +120,7 @@ MYSQL_USER=cloudisk_user
 MYSQL_PASSWORD=$MYSQL_PASSWORD
 
 # 服务器配置
-SERVER_PORT=8080
+SERVER_PORT=9090
 STORAGE_PATH=/data/storage
 LOG_LEVEL=INFO
 EOF
@@ -207,7 +207,7 @@ run_health_check() {
     docker-compose logs --tail 20 cloudisk_app || docker-compose logs --tail 20 | head -20
     
     log_info "测试前端页面..."
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ || echo "000")
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9090/ || echo "000")
     if [ "$HTTP_CODE" = "200" ]; then
         log_info "前端页面响应正常 (HTTP $HTTP_CODE)"
     else
@@ -262,7 +262,7 @@ full_initialization() {
     echo
     echo -e "${GREEN}🎉 初始化完成!${NC}"
     echo
-    echo "访问应用: http://localhost:8080"
+    echo "访问应用: http://localhost:9090"
     echo
     read -p "按 Enter 返回菜单..."
 }

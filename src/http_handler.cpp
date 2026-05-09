@@ -30,6 +30,23 @@ static int parse_int_param(const std::map<std::string, std::string> &params,
     }
 }
 
+static std::string build_request_context(const HttpRequest &request)
+{
+    std::ostringstream oss;
+    oss << "method=" << request.method << ", path=" << request.path;
+    auto code_it = request.params.find("code");
+    if (code_it != request.params.end() && !code_it->second.empty())
+    {
+        oss << ", share_code=" << code_it->second;
+    }
+    auto id_it = request.params.find("id");
+    if (id_it != request.params.end() && !id_it->second.empty())
+    {
+        oss << ", file_id=" << id_it->second;
+    }
+    return oss.str();
+}
+
 static std::string build_static_path(const std::string &request_path)
 {
     const std::string static_root = std::getenv("STATIC_DIR") ? std::getenv("STATIC_DIR") : "static";
@@ -221,7 +238,33 @@ HttpResponse HttpHandler::error_response(int code, const std::string &message)
     return json_response(code, message);
 }
 
-// 存根实现，后续会完善这些函数的逻辑
+HttpResponse HttpHandler::error_response_with_context(const HttpRequest &request,
+                                                      int code,
+                                                      const std::string &message,
+                                                      const std::string &reason,
+                                                      int user_id)
+{
+    std::ostringstream oss;
+    oss << "HTTP error: status=" << code
+        << ", message=" << message
+        << ", reason=" << reason
+        << ", " << build_request_context(request);
+    if (user_id >= 0)
+    {
+        oss << ", user_id=" << user_id;
+    }
+
+    if (code >= 500)
+    {
+        LOG_ERROR(oss.str());
+    }
+    else
+    {
+        LOG_WARN(oss.str());
+    }
+    return error_response(code, message);
+}
+
 HttpResponse HttpHandler::handle_register(const HttpRequest &request)
 {
     LOG_DEBUG("Received Register Request. Body: " + request.body);
@@ -294,13 +337,13 @@ HttpResponse HttpHandler::handle_user_info(const HttpRequest &request)
     int user_id = get_user_id_from_session(request);
     if (user_id == -1)
     {
-        return error_response(401, "Unauthorized");
+        return error_response_with_context(request, 401, "Unauthorized", "session token missing or invalid");
     }
 
     auto user = user_manager->get_user_by_id(user_id);
     if (!user)
     {
-        return error_response(404, "User not found");
+        return error_response_with_context(request, 404, "User not found", "user id from session not found", user_id);
     }
 
     JsonBuilder builder;
@@ -358,7 +401,7 @@ HttpResponse HttpHandler::handle_file_list(const HttpRequest &request)
     int user_id = get_user_id_from_session(request);
     if (user_id == -1)
     {
-        return error_response(401, "Unauthorized");
+        return error_response_with_context(request, 401, "Unauthorized", "session token missing or invalid");
     }
 
     int offset = 0;
@@ -669,21 +712,46 @@ HttpResponse HttpHandler::handle_share_download(const HttpRequest &request)
 
     if (code.empty())
     {
-        return error_response(400, "Missing share code");
+        return error_response_with_context(request, 400, "Missing share code", "query parameter code is empty");
     }
 
     // 从数据库获取分享的文件信息
     auto file_info = file_manager->get_shared_file_info(code);
     if (!file_info)
     {
-        return error_response(404, "Shared file not found or invalid code");
+        return error_response_with_context(request, 404, "Shared file not found or invalid code", "no row matched share_code");
     }
 
-    // 下载文件内容（传人文件所有者的 user_id）
-    auto data = file_manager->download_file(file_info->id, file_info->user_id);
-    if (!data)
+    // 直接按分享记录中的物理路径读取，避免再次查库导致的额外失败点
+    std::ifstream file(file_info->file_path, std::ios::binary);
+    if (!file)
     {
-        return error_response(500, "Failed to download shared file");
+        LOG_WARN("Shared file path not readable. code=" + code +
+                 ", file_id=" + std::to_string(file_info->id) +
+                 ", path=" + file_info->file_path);
+        return error_response_with_context(request, 404, "Shared file no longer exists", "file path missing or permission denied", file_info->user_id);
+    }
+
+    std::vector<char> data;
+    file.seekg(0, std::ios::end);
+    const std::streamoff size = file.tellg();
+    if (size < 0)
+    {
+        LOG_ERROR("Failed to determine shared file size. code=" + code +
+                  ", file_id=" + std::to_string(file_info->id));
+        return error_response_with_context(request, 500, "Failed to read shared file", "tellg failed for shared file", file_info->user_id);
+    }
+    file.seekg(0, std::ios::beg);
+    data.resize(static_cast<size_t>(size));
+    if (size > 0)
+    {
+        file.read(data.data(), static_cast<std::streamsize>(size));
+        if (!file)
+        {
+            LOG_ERROR("Failed to read shared file content. code=" + code +
+                      ", file_id=" + std::to_string(file_info->id));
+            return error_response_with_context(request, 500, "Failed to read shared file", "ifstream read failed", file_info->user_id);
+        }
     }
 
     HttpResponse response;
@@ -691,7 +759,7 @@ HttpResponse HttpHandler::handle_share_download(const HttpRequest &request)
     response.status_text = "OK";
     response.headers["Content-Type"] = "application/octet-stream";
     response.headers["Content-Disposition"] = "attachment; filename=\"" + file_info->original_filename + "\"; filename*=UTF-8''" + url_encode_utf8(file_info->original_filename);
-    response.body = std::string(data->begin(), data->end());
+    response.body = std::string(data.begin(), data.end());
     return response;
 }
 HttpResponse HttpHandler::handle_file_download(const HttpRequest &request)
@@ -1003,4 +1071,3 @@ int HttpHandler::get_user_id_from_session(const HttpRequest &request)
     }
     return session_manager->get_user_id(token);
 }
-

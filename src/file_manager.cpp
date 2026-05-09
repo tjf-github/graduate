@@ -16,6 +16,7 @@
 #include <unistd.h>
 #endif
 #include <random>
+#include <logger.h>
 
 namespace fs = std::filesystem;
 
@@ -844,10 +845,20 @@ std::string FileManager::create_share_code(int file_id, int user_id)
 
     if (db->execute(query))
     {
+        if (db->affected_rows() == 0)
+        {
+            LOG_WARN("create_share_code updated 0 rows. file_id=" + std::to_string(file_id) +
+                     ", user_id=" + std::to_string(user_id));
+            db_pool->return_connection(db);
+            return "";
+        }
         db_pool->return_connection(db);
         return code;
     }
 
+    LOG_ERROR("create_share_code failed. file_id=" + std::to_string(file_id) +
+              ", user_id=" + std::to_string(user_id) +
+              ", db_error=" + db->get_error());
     db_pool->return_connection(db);
     return "";
 }

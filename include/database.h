@@ -56,6 +56,7 @@ public:
     // 工具函数
     std::string escape_string(const std::string &str);
     unsigned long long last_insert_id();
+    unsigned long long affected_rows();
     std::string get_error() const;
 
 private:

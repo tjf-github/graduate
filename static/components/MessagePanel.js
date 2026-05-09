@@ -8,7 +8,7 @@ export function renderMessagePanel(state, { compact = false } = {}) {
             <div class="${compact ? "chat-header" : "section-toolbar"}">
                 <div>
                     <strong>${compact ? "快捷消息入口" : "消息通信"}</strong>
-                    <p>${state.messageStatus}</p>
+                    <p id="${compact ? "quick-chat-status" : "chat-status"}">${state.messageStatus}</p>
                 </div>
                 <button class="ghost-button" data-action="${compact ? "switch-section" : "refresh-messages"}" ${compact ? 'data-section="messages"' : ""}>
                     ${compact ? "打开完整会话" : "刷新消息"}
@@ -24,7 +24,7 @@ export function renderMessagePanel(state, { compact = false } = {}) {
                 >
                 <button class="primary-button" data-action="select-chat-user" ${compact ? 'data-source="quick"' : ""}>进入会话</button>
             </div>
-            <div class="message-list">
+            <div class="message-list" id="${compact ? "quick-message-list" : "message-list"}">
                 ${renderMessageBubbles(messages, state.currentUserId)}
             </div>
             ${compact ? "" : `

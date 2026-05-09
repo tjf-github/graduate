@@ -227,7 +227,7 @@ create_config() {
         log_ok "已根据 .env.example 创建 .env"
     else
         cat > "${env_file}" <<'ENVEOF'
-SERVER_PORT=8080
+SERVER_PORT=9090
 STORAGE_PATH=./storage
 STATIC_DIR=./static
 
@@ -268,7 +268,7 @@ run_server() {
         log_warn "未找到 .env，将使用程序内默认配置。"
     fi
 
-    local server_port="${SERVER_PORT:-8080}"
+    local server_port="${SERVER_PORT:-9090}"
     local db_host="${DB_HOST:-127.0.0.1}"
     local db_port="${DB_PORT:-3306}"
     local db_user="${DB_USER:-cloudisk}"

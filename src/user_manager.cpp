@@ -27,6 +27,12 @@ bool UserManager::send_message(int sender_id, int receiver_id, const std::string
         db->escape_string(content) + "')";
 
     bool success = db->execute(query);
+    if (!success)
+    {
+        LOG_ERROR("send_message failed. sender_id=" + std::to_string(sender_id) +
+                  ", receiver_id=" + std::to_string(receiver_id) +
+                  ", db_error=" + db->get_error());
+    }
     db_pool->return_connection(db);
     return success;
 }

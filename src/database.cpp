@@ -175,6 +175,12 @@ unsigned long long Database::last_insert_id()
     return mysql_insert_id(conn);
 }
 
+unsigned long long Database::affected_rows()
+{
+    std::lock_guard<std::mutex> lock(db_mutex);
+    return mysql_affected_rows(conn);
+}
+
 // 获取错误信息
 std::string Database::get_error() const
 {

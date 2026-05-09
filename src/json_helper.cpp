@@ -1,6 +1,59 @@
 #include "json_helper.h"
 #include <sstream>
 #include <algorithm>
+#include <cctype>
+
+namespace
+{
+bool parse_json_string_token(const std::string &content, size_t &pos, std::string &out)
+{
+    if (pos >= content.length() || content[pos] != '"')
+    {
+        return false;
+    }
+
+    ++pos; // skip opening quote
+    out.clear();
+
+    while (pos < content.length())
+    {
+        char c = content[pos++];
+        if (c == '\\')
+        {
+            if (pos >= content.length())
+            {
+                return false;
+            }
+            char esc = content[pos++];
+            switch (esc)
+            {
+            case '"': out.push_back('"'); break;
+            case '\\': out.push_back('\\'); break;
+            case '/': out.push_back('/'); break;
+            case 'b': out.push_back('\b'); break;
+            case 'f': out.push_back('\f'); break;
+            case 'n': out.push_back('\n'); break;
+            case 'r': out.push_back('\r'); break;
+            case 't': out.push_back('\t'); break;
+            default:
+                // Keep unknown escapes as-is to avoid data loss in a lenient parser.
+                out.push_back(esc);
+                break;
+            }
+            continue;
+        }
+
+        if (c == '"')
+        {
+            return true;
+        }
+
+        out.push_back(c);
+    }
+
+    return false;
+}
+} // namespace
 
 // JsonBuilder实现
 //处理特殊字符转义
@@ -89,27 +142,23 @@ void JsonParser::parse(const std::string& json_str) {
         // 查找键
         size_t key_start = content.find('"', pos);
         if(key_start == std::string::npos) break;
-        
-        size_t key_end = content.find('"', key_start + 1);
-        if(key_end == std::string::npos) break;
-        
-        std::string key = content.substr(key_start + 1, key_end - key_start - 1);
+        pos = key_start;
+        std::string key;
+        if(!parse_json_string_token(content, pos, key)) break;
         
         // 查找冒号
-        size_t colon = content.find(':', key_end);
+        size_t colon = content.find(':', pos);
         if(colon == std::string::npos) break;
         
         // 查找值
         pos = colon + 1;
         while(pos < content.length() && std::isspace(content[pos])) pos++;
+        if(pos >= content.length()) break;
         
         std::string value;
         if(content[pos] == '"') {
             // 字符串值
-            size_t value_end = content.find('"', pos + 1);
-            if(value_end == std::string::npos) break;
-            value = content.substr(pos + 1, value_end - pos - 1);
-            pos = value_end + 1;
+            if(!parse_json_string_token(content, pos, value)) break;
         } else {
             // 数字、布尔或null
             size_t value_end = content.find_first_of(",}", pos);

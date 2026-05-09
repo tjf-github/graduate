@@ -1488,7 +1488,7 @@ function startMessagePolling() {
     stopMessagePolling();
     if (!state.activeChatUserId || !state.currentToken) return;
     state.messagePollTimer = window.setInterval(() => {
-        loadMessages();
+        loadMessages(false, false);
     }, 3000);
 }
 
@@ -1525,12 +1525,37 @@ async function selectChatUser(rawValue) {
 
     state.activeChatUserId = value;
     localStorage.setItem("lwcs_chat_user_id", String(value));
-    state.messageStatus = `当前会话用户 ID：${value}，每 3 秒自动刷新`;
+    state.messageStatus = `当前会话用户 ID：${value}，后台每 3 秒自动刷新`;
     startMessagePolling();
-    await loadMessages(true);
+    await loadMessages(true, true);
 }
 
-async function loadMessages(showErrors = false) {
+function renderMessageBubblesInPlace(messages) {
+    if (!messages.length) {
+        return '<div class="server-status-item"><strong>暂无会话内容</strong><p>输入一个用户 ID 后即可开始收发消息。</p></div>';
+    }
+
+    return messages.map((msg) => `
+        <div class="message-bubble ${Number(msg.sender_id) === state.currentUserId ? "self" : ""}">
+            <div class="message-meta">发送方 ${msg.sender_id} -> 接收方 ${msg.receiver_id} | ${msg.created_at || "-"} | ${msg.is_read ? "已读" : "未读"}</div>
+            <div>${escapeHtml(msg.content || "")}</div>
+        </div>
+    `).join("");
+}
+
+function patchMessagePanelDom() {
+    const fullStatus = document.getElementById("chat-status");
+    const quickStatus = document.getElementById("quick-chat-status");
+    const fullList = document.getElementById("message-list");
+    const quickList = document.getElementById("quick-message-list");
+
+    if (fullStatus) fullStatus.textContent = state.messageStatus;
+    if (quickStatus) quickStatus.textContent = state.messageStatus;
+    if (fullList) fullList.innerHTML = renderMessageBubblesInPlace(state.messages);
+    if (quickList) quickList.innerHTML = renderMessageBubblesInPlace(state.messages.slice(-4));
+}
+
+async function loadMessages(showErrors = false, shouldRender = false) {
     if (!state.activeChatUserId) return;
     try {
         const { data } = await requestJson(`${API_BASE}/message/list?with_user_id=${state.activeChatUserId}&limit=50`, {
@@ -1538,8 +1563,12 @@ async function loadMessages(showErrors = false) {
         });
         if (data.code === 200) {
             state.messages = Array.isArray(data.data) ? [...data.data].reverse() : [];
-            state.messageStatus = `当前会话用户 ID：${state.activeChatUserId}，共 ${state.messages.length} 条消息，每 3 秒自动刷新`;
-            render();
+            state.messageStatus = `当前会话用户 ID：${state.activeChatUserId}，共 ${state.messages.length} 条消息，后台每 3 秒自动刷新`;
+            if (shouldRender) {
+                render();
+            } else {
+                patchMessagePanelDom();
+            }
         } else if (showErrors) {
             showToast(data.message || "消息加载失败", "error");
         }
@@ -1569,7 +1598,7 @@ async function sendMessage() {
         if (data.code === 200) {
             if (input) input.value = "";
             showToast("消息发送成功");
-            await loadMessages();
+            await loadMessages(false, false);
         } else {
             showToast(data.message || "消息发送失败", "error");
         }

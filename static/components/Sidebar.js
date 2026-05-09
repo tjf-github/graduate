@@ -51,8 +51,9 @@ export function renderSidebar(state) {
                 <div class="sidebar-panel-header">
                     <strong>当前账号</strong>
                 </div>
-                <p>${state.profile.username || state.currentUser || "-"}</p>
-                <small>${state.profile.email || "未同步邮箱"}</small>
+                <p>用户名: ${state.profile.username || state.currentUser || "-"}</p>
+                <p>邮箱: ${state.profile.email || "未同步邮箱"}</p>
+                <p>UID: ${state.profile.id || state.currentUserId || "-"}</p>
                 <button class="ghost-button full-width" data-action="open-profile-edit">编辑资料</button>
                 <button class="ghost-button full-width" data-action="logout">退出登录</button>
             </section>

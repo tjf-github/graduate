@@ -86,6 +86,11 @@ private:
     HttpResponse json_response(int code, const std::string &message,
                                const std::string &data = "");
     HttpResponse error_response(int code, const std::string &message);
+    HttpResponse error_response_with_context(const HttpRequest &request,
+                                             int code,
+                                             const std::string &message,
+                                             const std::string &reason,
+                                             int user_id = -1);
 };
 
 

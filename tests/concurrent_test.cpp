@@ -381,7 +381,7 @@ void print_stats(const ScenarioStats &stats)
 int main()
 {
     const std::string host = "127.0.0.1";
-    const int port = std::atoi(get_env_or_default("PORT", "8080").c_str());
+    const int port = std::atoi(get_env_or_default("PORT", "9090").c_str());
     const auto seed = static_cast<long long>(std::chrono::system_clock::now().time_since_epoch().count());
 
     std::ostringstream user_a_builder;
