@@ -324,9 +324,10 @@ HttpResponse HttpHandler::handle_logout(const HttpRequest &request)
 {
     std::string token = get_session_token(request);
     if (token.empty())
-    {
         return error_response(401, "Unauthorized");
-    }
+
+    if (session_manager->get_user_id(token) == -1)
+        return error_response(401, "Invalid or expired session");
 
     session_manager->delete_session(token);
     return json_response(200, "Logout success");
@@ -927,7 +928,9 @@ HttpResponse HttpHandler::handle_file_search(const HttpRequest &request)
 
 HttpResponse HttpHandler::handle_server_status(const HttpRequest &request)
 {
-    (void)request;
+    int user_id = get_user_id_from_session(request);
+    if (user_id == -1)
+        return error_response(401, "Unauthorized");
 
     const std::vector<ClientInfo> clients =
         client_manager ? client_manager->get_all_clients() : std::vector<ClientInfo>{};
@@ -1034,17 +1037,17 @@ HttpResponse HttpHandler::handle_message_list(const HttpRequest &request)
 
 std::string HttpHandler::get_session_token(const HttpRequest &request)
 {
-    if (request.headers.count("Authorization"))
+    if (request.headers.count("authorization"))
     {
-        std::string auth = request.headers.at("Authorization");
-        if (auth.substr(0, 7) == "Bearer ")
+        std::string auth = request.headers.at("authorization");
+        if (auth.size() > 7 && auth.substr(0, 7) == "Bearer ")
         {
             return auth.substr(7);
         }
     }
-    if (request.headers.count("X-Token"))
+    if (request.headers.count("x-token"))
     {
-        return request.headers.at("X-Token");
+        return request.headers.at("x-token");
     }
     return "";
 }

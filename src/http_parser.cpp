@@ -1,6 +1,7 @@
 #include "http_parser.h"
 
 #include <sstream>
+#include <algorithm>
 #include "utils.h"
 
 // ---------------------------------------------------------
@@ -70,13 +71,16 @@ HttpRequest HttpParser::parse(const std::string &raw_request)
             std::string key = line.substr(0, colon_pos);
             std::string value = line.substr(colon_pos + 1);
 
+            // 规范化 header 名为小写，符合 HTTP 大小写不敏感规范
+            std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+
             // Trim whitespace
             while (!value.empty() && value.front() == ' ')
                 value.erase(0, 1);
 
             req.headers[key] = value;
 
-            if (key == "Content-Length")
+            if (key == "content-length")
             {
                 try
                 {
