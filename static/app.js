@@ -1165,30 +1165,71 @@ async function uploadSimpleFile(file) {
     });
 }
 
+// 生成断点续传的本地存储 key（文件名+大小唯一标识一次上传任务）
+function getResumeKey(file) {
+    return `upload_resume_${file.name}_${file.size}`;
+}
+
 async function uploadLargeFile(file) {
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    const initRes = await requestJson(`${API_BASE}/file/upload/init`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-            filename: file.name,
-            total_size: file.size,
-            total_chunks: totalChunks,
-            mime_type: file.type || "application/octet-stream"
-        })
-    });
 
-    if (initRes.data.code !== 200 || !initRes.data.data?.upload_id) {
-        throw new Error(initRes.data.message || "初始化上传失败");
+    // ── 断点续传：检查本地是否有未完成的 upload_id ──
+    let uploadId = null;
+    let completedSet = new Set();
+    let uploadedChunks = 0;
+
+    const resumeKey = getResumeKey(file);
+    const savedUploadId = localStorage.getItem(resumeKey);
+
+    if (savedUploadId) {
+        // 向服务端查询该 upload_id 的进度
+        const progressRes = await requestJson(
+            `${API_BASE}/file/upload/progress?upload_id=${encodeURIComponent(savedUploadId)}`,
+            { method: "GET", headers: getAuthHeaders() }
+        ).catch(() => null);
+
+        const pd = progressRes?.data;
+        if (pd?.code === 200 && pd.data?.completed_chunk_indices) {
+            // 服务端 session 仍有效，恢复续传
+            uploadId = savedUploadId;
+            completedSet = new Set(pd.data.completed_chunk_indices);
+            uploadedChunks = completedSet.size;
+            state.upload.statusText = `断点续传中，已完成 ${uploadedChunks}/${totalChunks} 块`;
+        } else {
+            // session 已过期或不存在，清掉旧记录重新上传
+            localStorage.removeItem(resumeKey);
+        }
     }
 
-    const uploadId = initRes.data.data.upload_id;
+    // 没有可续传的 session，重新初始化
+    if (!uploadId) {
+        const initRes = await requestJson(`${API_BASE}/file/upload/init`, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                filename: file.name,
+                total_size: file.size,
+                total_chunks: totalChunks,
+                mime_type: file.type || "application/octet-stream"
+            })
+        });
+
+        if (initRes.data.code !== 200 || !initRes.data.data?.upload_id) {
+            throw new Error(initRes.data.message || "初始化上传失败");
+        }
+
+        uploadId = initRes.data.data.upload_id;
+        localStorage.setItem(resumeKey, uploadId); // 记录供下次续传
+        state.upload.statusText = `分块上传中（共 ${totalChunks} 块）`;
+    }
+
     state.upload.activeUploadId = uploadId;
-    state.upload.statusText = `分块上传中（共 ${totalChunks} 块）`;
+    state.upload.progress = Math.round((uploadedChunks / totalChunks) * 100);
     render();
 
-    const chunkQueue = Array.from({ length: totalChunks }, (_, i) => i);
-    let uploadedChunks = 0;
+    // 只把尚未完成的分片放入队列
+    const chunkQueue = Array.from({ length: totalChunks }, (_, i) => i)
+        .filter(i => !completedSet.has(i));
 
     const uploadOneChunk = async (chunkIndex) => {
         if (state.upload.cancelRequested) {
@@ -1228,7 +1269,7 @@ async function uploadLargeFile(file) {
         render();
     };
 
-    const workers = Array.from({ length: Math.min(CHUNK_CONCURRENCY, totalChunks) }, async () => {
+    const workers = Array.from({ length: Math.min(CHUNK_CONCURRENCY, chunkQueue.length || 1) }, async () => {
         while (chunkQueue.length > 0) {
             const chunkIndex = chunkQueue.shift();
             if (chunkIndex === undefined) return;
@@ -1244,8 +1285,10 @@ async function uploadLargeFile(file) {
                 method: "POST",
                 headers: getAuthHeaders()
             }).catch(() => null);
+            localStorage.removeItem(resumeKey); // 取消时清掉续传记录
             throw new Error("cancelled");
         }
+        // 非取消的错误：保留 upload_id，下次可续传
         throw error;
     }
 
@@ -1258,6 +1301,7 @@ async function uploadLargeFile(file) {
         throw new Error(completeRes.data.message || "完成上传失败");
     }
 
+    localStorage.removeItem(resumeKey); // 上传成功，清掉续传记录
     state.upload.progress = 100;
     state.upload.statusText = "上传完成";
     render();

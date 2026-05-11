@@ -353,6 +353,21 @@ UploadProgress FileManager::get_upload_progress(const std::string &upload_id, in
         mysql_free_result(failed_result);
     }
 
+    // 查询已完成的分片索引，供前端断点续传时跳过
+    std::string completed_query =
+        "SELECT chunk_index FROM upload_chunks WHERE upload_id = '" +
+        db->escape_string(upload_id) + "' AND status = 'completed' ORDER BY chunk_index ASC";
+    MYSQL_RES *completed_result = db->query(completed_query);
+    if (completed_result)
+    {
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(completed_result)))
+        {
+            progress.completed_chunk_indices.push_back(std::stoi(row[0] ? row[0] : "0"));
+        }
+        mysql_free_result(completed_result);
+    }
+
     if (progress.total_chunks > 0)
     {
         progress.progress = static_cast<double>(progress.completed_chunks) /

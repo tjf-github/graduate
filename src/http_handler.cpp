@@ -70,6 +70,10 @@ static std::string build_static_path(const std::string &request_path)
     return "";
 }
 
+// ---------------------------------------------------------
+// 1. HttpHandler 的实现
+// ---------------------------------------------------------
+
 HttpHandler::HttpHandler(std::shared_ptr<UserManager> user_mgr,
                          std::shared_ptr<FileManager> file_mgr,
                          std::shared_ptr<SessionManager> session_mgr,
@@ -79,9 +83,11 @@ HttpHandler::HttpHandler(std::shared_ptr<UserManager> user_mgr,
       session_manager(session_mgr),
       client_manager(client_mgr) {}
 
-// 路由分发入口：按 method + path 调用对应处理器
+// 根据请求路径和方法调用相应的处理函数，返回HTTP响应
 HttpResponse HttpHandler::handle_request(const HttpRequest &request)
 {
+    //pair<std::string, std::string> route_key = {request.path, request.method};
+    //return handlers[route_key](request);
     if (request.path == "/api/register" && request.method == "POST")
         return handle_register(request);
     if (request.path == "/api/login" && request.method == "POST")
@@ -93,7 +99,7 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
     if (request.path == "/api/user/profile" && (request.method == "PUT" || request.method == "POST"))
         return handle_user_profile_update(request);
 
-    // 文件相关 API
+    // 文件操作
     if (request.path == "/api/file/list" && request.method == "GET")
         return handle_file_list(request);
     if (request.path == "/api/file/upload/init" && request.method == "POST")
@@ -129,7 +135,7 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
     if (request.path == "/api/message/list" && request.method == "GET")
         return handle_message_list(request);
 
-    // 静态文件服务
+    // 静态文件服务：简单的根目录映射
     std::string file_path;
     if (request.path == "/" || request.path == "/index.html")
     {
@@ -137,7 +143,7 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
     }
     else
     {
-        // 基础目录穿越防护
+        // 简单的安全检查，防止目录遍历攻击
         if (request.path.find("..") != std::string::npos)
         {
             return error_response(403, "Forbidden");
@@ -149,7 +155,7 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
         }
     }
 
-    // 静态文件命中则直接返回
+    // 尝试打开文件，如果存在则返回内容，否则返回404
     if (!file_path.empty())
     {
         std::ifstream file(file_path, std::ios::binary);
@@ -162,7 +168,7 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
             response.status_text = "OK";
             response.body = ss.str();
 
-            // 基于后缀的简易 Content-Type 推断
+            // 简单的 Content-Type 推断
             if (file_path.find(".html") != std::string::npos)
                 response.headers["Content-Type"] = "text/html";
             else if (file_path.find(".css") != std::string::npos)
@@ -179,13 +185,13 @@ HttpResponse HttpHandler::handle_request(const HttpRequest &request)
     return error_response(404, "Not Found");
 }
 
-// 构建统一 JSON 响应；data 需为合法 JSON 片段
+// 构建JSON响应，code是状态码，message是提示信息，data是可选的响应数据（已经是JSON格式字符串）
 HttpResponse HttpHandler::json_response(int code, const std::string &message, const std::string &data)
 {
     HttpResponse response;
     response.status_code = code;
 
-    // 维护与状态码对应的 reason phrase
+    // 补上 status_text
     switch (code)
     {
     case 200:
@@ -226,7 +232,7 @@ HttpResponse HttpHandler::json_response(int code, const std::string &message, co
     return response;
 }
 
-// 错误响应包装
+// 构建错误响应，默认使用json_response来构建响应体
 HttpResponse HttpHandler::error_response(int code, const std::string &message)
 {
     return json_response(code, message);
@@ -544,8 +550,14 @@ HttpResponse HttpHandler::handle_file_upload_progress(const HttpRequest &request
          << "\"completed_chunks\":" << progress.completed_chunks << ","
          << "\"total_size\":" << progress.total_size << ","
          << "\"uploaded_size\":" << progress.uploaded_size << ","
-         << "\"progress\":" << std::fixed << std::setprecision(4) << progress.progress
-         << "}";
+         << "\"progress\":" << std::fixed << std::setprecision(4) << progress.progress << ","
+         << "\"completed_chunk_indices\":[";
+    for (size_t i = 0; i < progress.completed_chunk_indices.size(); i++)
+    {
+        if (i > 0) data << ",";
+        data << progress.completed_chunk_indices[i];
+    }
+    data << "]}";
     return json_response(200, "Success", data.str());
 }
 
