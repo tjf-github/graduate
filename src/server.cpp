@@ -7,7 +7,6 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-// 线程头文件
 #include <thread>
 #include <chrono>
 
@@ -21,16 +20,14 @@
 #else
 #include <unistd.h>
 #include <sys/types.h>
-// socket相关头文件
 #include <sys/socket.h>
-// 网络地址结构体
 #include <netinet/in.h>
-// IP地址转换函数
 #include <arpa/inet.h>
 #endif
-// 写入数据到socket，确保全部写入
+
 namespace
 {
+// 封装阻塞写，确保将缓冲区完整写入 socket
 bool write_all(int fd, const char *data, size_t len)
 {
     size_t written = 0;
@@ -76,7 +73,7 @@ CloudDiskServer::~CloudDiskServer()
 
 bool CloudDiskServer::create_socket()
 {
-    // tcpsocket，AF_INET--IPv4，SOCK_STREAM--TCP
+    // IPv4 TCP socket
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1)
     {
@@ -84,7 +81,7 @@ bool CloudDiskServer::create_socket()
         return false;
     }
 
-    // 设置socket选项
+    // 允许端口快速复用，避免重启时 bind 失败
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR,
                    &opt, sizeof(opt)) < 0)
@@ -94,14 +91,14 @@ bool CloudDiskServer::create_socket()
         return false;
     }
 
-    // 绑定地址
+    // 绑定监听地址
     struct sockaddr_in address;
-    // memset--将sin_zero字段填充为0，确保结构体的正确性和兼容性
+    // 清理填充字段，确保结构体内容确定
     memset(address.sin_zero, '\0', sizeof(address.sin_zero));
     address.sin_family = AF_INET;
-    // INADDR_ANY--绑定到所有可用接口，允许从任何IP地址连接
+    // 监听所有网卡地址
     address.sin_addr.s_addr = htonl(INADDR_ANY);
-    // htons--主机字节序转网络字节序，确保跨平台兼容
+    // 主机字节序 -> 网络字节序
     address.sin_port = htons(port);
 
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
@@ -132,7 +129,7 @@ bool CloudDiskServer::start()
 
     running = true;
 
-    // 启动会话清理线程
+    // 后台定期清理过期会话
     std::thread cleanup_thread([this]()
                                { cleanup_sessions_periodically(); });
     cleanup_thread.detach();
@@ -153,7 +150,7 @@ void CloudDiskServer::stop()
     LOG_INFO("Server stopped");
 }
 
-// 处理客户端连接
+// 处理单个客户端请求（当前为短连接模型）
 void CloudDiskServer::handle_client(int client_fd)
 {
     const int BUFFER_SIZE = 8192;
@@ -163,15 +160,15 @@ void CloudDiskServer::handle_client(int client_fd)
     std::string request_data;
     ssize_t bytes_read;
 
-    // 读取cilent请求数据，直到读取完整的HTTP请求头和可能的请求体
+    // 持续读取直到拿到完整请求头，若有 body 再按 Content-Length 补齐
     while ((bytes_read = read(client_fd, buffer, BUFFER_SIZE)) > 0)
     {
         request_data.append(buffer, bytes_read);
 
-        // 检查是否读取完整
+        // 先确认 header 是否完整
         if (request_data.find("\r\n\r\n") != std::string::npos)
         {
-            // 检查是否有Content-Length
+            // 若存在 Content-Length，校验 body 是否已读全
             size_t cl_pos = request_data.find("Content-Length:");
             if (cl_pos != std::string::npos)
             {
@@ -193,7 +190,7 @@ void CloudDiskServer::handle_client(int client_fd)
 
                 if (body_length < content_length)
                 {
-                    continue; // 继续读取
+                    continue;
                 }
             }
             break;
@@ -208,10 +205,8 @@ void CloudDiskServer::handle_client(int client_fd)
         return;
     }
 
-    // 解析请求
+    // 解析并处理请求
     HttpRequest request = HttpParser::parse(request_data);
-
-    // 处理请求
     HttpResponse response = http_handler->handle_request(request);
 
     if (response.stream_file)

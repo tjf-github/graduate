@@ -5,7 +5,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-// 处理日期头文件
 #include <chrono>
 
 struct Session
@@ -19,6 +18,7 @@ struct Session
 class SessionManager
 {
 public:
+    // timeout_minutes: 会话无访问后超时的分钟数
     SessionManager(int timeout_minutes = 30);
 
     // 创建会话
@@ -36,16 +36,16 @@ public:
     // 清理过期会话
     void cleanup_expired_sessions();
 
-    // 当前会话数量
+    // 当前会话数量（线程安全）
     size_t session_count();
 
     // 获取会话超时时间
     size_t get_timeout_minutes() const;
 
 private:
-    // 存储会话的映射，key为token，value为Session对象
+    // token -> Session
     std::map<std::string, Session> sessions;
-    // 保护会话数据的互斥锁
+    // 保护 sessions 并发访问
     mutable std::mutex session_mutex;
     // 会话过期时间（分钟）
     int timeout_minutes;

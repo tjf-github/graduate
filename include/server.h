@@ -22,7 +22,7 @@ public:
     // 停止服务器
     void stop();
     
-    // 运行服务器主循环
+    // 运行主循环：accept 连接并分发到线程池
     void run();
     
 private:
@@ -30,7 +30,7 @@ private:
     int server_fd;
     bool running;
     
-    // 组件
+    // 核心组件
     std::unique_ptr<ThreadPool> thread_pool;
     std::shared_ptr<DBConnectionPool> db_pool;
     std::shared_ptr<UserManager> user_manager;
@@ -39,7 +39,7 @@ private:
     std::shared_ptr<ClientManager> client_manager;
     std::shared_ptr<HttpHandler> http_handler;
     
-    // 辅助函数
+    // 内部流程
     bool create_socket();
     // 处理客户端连接
     void handle_client(int client_fd);

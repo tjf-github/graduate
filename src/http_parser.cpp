@@ -4,17 +4,13 @@
 #include <algorithm>
 #include "utils.h"
 
-// ---------------------------------------------------------
-// 2. HttpParser 的实现（解决 Undefined Reference 的关键）
-// ---------------------------------------------------------
-
-// 注意：这里不需要写 static 关键字
+// 解析原始 HTTP 报文为结构化请求对象
 HttpRequest HttpParser::parse(const std::string &raw_request)
 {
     HttpRequest req;
     std::istringstream iss(raw_request);
 
-    // 1. 解析请求行: GET /index.html HTTP/1.1
+    // 1) 解析请求行: GET /index.html HTTP/1.1
     std::string line;
     if (!std::getline(iss, line) || line.empty())
         return req;
@@ -56,7 +52,7 @@ HttpRequest HttpParser::parse(const std::string &raw_request)
         }
     }
 
-    // 2. 解析 Headers
+    // 2) 解析 Headers
     int content_length = 0;
     while (std::getline(iss, line) && !line.empty() && line != "\r")
     {
@@ -74,7 +70,7 @@ HttpRequest HttpParser::parse(const std::string &raw_request)
             // 规范化 header 名为小写，符合 HTTP 大小写不敏感规范
             std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 
-            // Trim whitespace
+            // 去掉 header value 前导空格
             while (!value.empty() && value.front() == ' ')
                 value.erase(0, 1);
 
@@ -94,14 +90,9 @@ HttpRequest HttpParser::parse(const std::string &raw_request)
         }
     }
 
-    // 3. 解析 Body (如果 Content-Length > 0)
-    // 此时 iss 指针正位于空行之后，也就是 Body 的起始位置
+    // 3) 若存在 Content-Length，按长度截取 body
     if (content_length > 0)
     {
-        // 计算当前读到的位置在原始字符串中的索引
-        // 注意：tellg 在某些流实现中可能不准，更稳健的方法是把剩下的流全部读出来
-        // 或者简单地：找到 \r\n\r\n 分隔符，取后面的部分
-
         size_t header_end = raw_request.find("\r\n\r\n");
         if (header_end != std::string::npos)
         {
@@ -116,25 +107,25 @@ HttpRequest HttpParser::parse(const std::string &raw_request)
     return req;
 }
 
-// 构建HTTP响应字符串
+// 将响应对象编码为 HTTP 文本
 std::string HttpParser::build_response(const HttpResponse &response)
 {
     std::ostringstream oss;
     oss << "HTTP/1.1 " << response.status_code << " " << response.status_text << "\r\n";
 
-    // 使用 response 中设置的 headers, 如果没有 Content-Type 则默认 application/json (虽然构造函数已设置)
+    // 输出调用方已设置的 headers
     for (const auto &header : response.headers)
     {
         oss << header.first << ": " << header.second << "\r\n";
     }
 
-    // 可以在这里计算 Content-Length，如果 headers 里没有的话
+    // 缺省补齐 Content-Length
     if (response.headers.find("Content-Length") == response.headers.end())
     {
         oss << "Content-Length: " << response.body.length() << "\r\n";
     }
 
-    // 强制关闭连接以简化处理
+    // 默认短连接，简化服务端实现
     if (response.headers.find("Connection") == response.headers.end())
     {
         oss << "Connection: close\r\n";

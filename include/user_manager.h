@@ -32,11 +32,11 @@ struct Message
 class UserManager
 {
 public:
-    //发送消息
+    // 发送站内消息
     bool send_message(int sender_id, int receiver_id, const std::string &content);
-    // 获取用户之间的消息记录，按照时间倒序排列，默认返回最近50条消息
+    // 获取双方消息（按时间倒序，默认 50 条）
     std::vector<Message> get_messages(int user_id, int with_user_id, int limit = 50);
-    // 将用户之间的消息标记为已读
+    // 将 sender -> user 的未读消息标记为已读
     bool mark_messages_read(int user_id, int sender_id);
 
 
@@ -61,7 +61,7 @@ public:
     bool update_password(int user_id, const std::string &new_password);
     bool update_profile(int user_id, const std::string &username, const std::string &email);
 
-    // 检查用户存储空间
+    // 检查用户剩余空间是否足够
     bool check_storage_available(int user_id, long long file_size);
 
     // 删除用户
@@ -71,7 +71,7 @@ private:
     // 数据库连接池
     std::shared_ptr<DBConnectionPool> db_pool;
 
-    // 密码哈希
+    // 密码摘要（当前为 SHA-256，无盐）
     std::string hash_password(const std::string &password);
     // 验证密码
     bool verify_password(const std::string &password,

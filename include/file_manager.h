@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 #include <memory>
-// C++17引入的std::optional，用于表示可能不存在的值
 #include <optional>
 #include <ctime>
 #include "database.h"
@@ -30,7 +29,7 @@ struct ShareInfo
     std::string created_at;
 };
 
-// 上传会话结构体
+// 大文件上传会话
 struct UploadSession
 {
     std::string upload_id;
@@ -44,7 +43,7 @@ struct UploadSession
     std::string status;
 };
 
-// 分块信息结构体
+// 分块元数据
 struct ChunkInfo
 {
     std::string upload_id;
@@ -54,7 +53,7 @@ struct ChunkInfo
     std::string status;
 };
 
-// 上传进度结构体
+// 上传进度快照
 struct UploadProgress
 {
     std::string upload_id;
@@ -69,14 +68,14 @@ struct UploadProgress
     bool expired = false;
 };
 
-// 文件管理类，需要对mysql和路径（有了路径就知道文件）进行封装，提供文件上传、下载、删除、重命名、搜索等功能
+// 文件管理器：封装文件存储与数据库元数据操作
 class FileManager
 {
 public:
     FileManager(std::shared_ptr<DBConnectionPool> pool,
                 const std::string &storage_path);
 
-    //  ── 大文件分块上传 ──────────────────────────────────
+    // 大文件分块上传
     std::optional<UploadSession> create_upload_session(
         int user_id,
         const std::string &filename,
@@ -99,12 +98,10 @@ public:
 
     bool cancel_upload(const std::string &upload_id, int user_id);
 
-    // 文件上传
+    // 普通（非分块）上传
     std::optional<FileInfo> upload_file(int user_id,
                                         const std::string &original_filename,
-                                        // mime_type是文件的MIME类型，例如"image/png"、"application/pdf"等，用于描述文件的格式和类型
                                         const std::string &mime_type,
-                                        // data是文件的二进制数据，size是文件的大小，单位为字节
                                         const char *data,
                                         size_t size);
 
@@ -114,7 +111,7 @@ public:
     // 获取文件信息
     std::optional<FileInfo> get_file_info(int file_id, int user_id);
 
-    // 获取用户所有文件列表
+    // 获取用户文件列表（分页）
     std::vector<FileInfo> list_user_files(int user_id,
                                           int offset = 0,
                                           int limit = 100);
@@ -130,13 +127,13 @@ public:
     std::vector<FileInfo> search_files(int user_id,
                                        const std::string &keyword);
 
-    // 形成分享码
+    // 创建分享码
     std::string create_share_code(int file_id, int user_id);
 
     // 通过分享码获取文件信息
     std::optional<FileInfo> get_shared_file_info(const std::string &code);
 
-    //  获取存储统计
+    // 获取存储统计
     long long get_user_storage_used(int user_id);
     int get_user_file_count(int user_id);
 
@@ -145,24 +142,24 @@ public:
 private:
     // 数据库连接池
     std::shared_ptr<DBConnectionPool> db_pool;
-    // 文件存储路径
+    // 文件根目录
     std::string storage_path;
-    // 一个string作为分享码，生成分享码的逻辑可以是随机生成一个唯一的字符串，并将其与文件信息关联存储在数据库中，以便通过分享码查询文件信息和数据
+    // 兼容旧逻辑的预留字段
     std::string code;
 
     // 生成唯一文件名
     std::string generate_unique_filename(const std::string &original_filename);
 
-    // 构建完整文件路径，例如/storage/12345/unique_filename.ext
+    // 构建文件绝对路径：<storage>/<user_id>/<filename>
     std::string get_full_path(int user_id, const std::string &filename);
 
     // 创建用户目录
     bool create_user_directory(int user_id);
 
-    // 临时目录路径
+    // 分块上传临时路径
     std::string get_temp_dir(const std::string &upload_id);
     std::string get_chunk_path(const std::string &upload_id, int chunk_index);
-    // 合并所有.part文件
+    // 合并分块为最终文件
     bool merge_chunks(const std::string &upload_id,
                       int total_chunks,
                       const std::string &dest_path);

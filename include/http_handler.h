@@ -10,7 +10,7 @@
 #include "session_manager.h"
 #include "client_manager.h"
 
-// http请求的基本结构体，包含请求方法、路径、版本、头部信息、请求体和查询参数等
+// HTTP 请求对象
 struct HttpRequest
 {
     std::string method;
@@ -21,7 +21,7 @@ struct HttpRequest
     std::map<std::string, std::string> params;
 };
 
-// http响应的基本结构体，包含状态码、状态文本、头部信息和响应体等
+// HTTP 响应对象
 struct HttpResponse
 {
     int status_code;
@@ -45,13 +45,10 @@ public:
                 std::shared_ptr<SessionManager> session_mgr,
                 std::shared_ptr<ClientManager> client_mgr);
 
-    // 处理HTTP请求，根据请求路径和方法调用相应的处理函数，返回HTTP响应
+    // 路由入口：按 method + path 分发到对应处理函数
     HttpResponse handle_request(const HttpRequest &request);
 
 private:
-    //std::map<pair<std::string, std::string>, std::function<HttpResponse(const HttpRequest &)>> handlers;
-    //handlers[{"POST", "/api/register"}] = [this](const HttpRequest &req) { return handle_register(req); };
-
     std::shared_ptr<UserManager> user_manager;
     std::shared_ptr<FileManager> file_manager;
     std::shared_ptr<SessionManager> session_manager;
