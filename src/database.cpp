@@ -209,7 +209,7 @@ DBConnectionPool::~DBConnectionPool()
     connections.clear();
     available.clear();
 }
-
+ 
 // 获取一个可用的数据库连接，如果没有可用连接则等待
 std::shared_ptr<Database> DBConnectionPool::get_connection()
 {

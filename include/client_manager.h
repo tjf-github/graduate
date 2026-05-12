@@ -48,28 +48,28 @@ public:
      */
     void remove_client(int socket_fd);
     
-    /**
-     * @brief 将指定客户端标记为非活跃
-     * @param socket_fd 客户端套接字文件描述符
-     * @note 线程安全。常用于连接关闭时的清理操作
-     */
-    void mark_inactive(int socket_fd);
+    // /**
+    //  * @brief 将指定客户端标记为非活跃
+    //  * @param socket_fd 客户端套接字文件描述符
+    //  * @note 线程安全。常用于连接关闭时的清理操作
+    //  */
+    // void mark_inactive(int socket_fd);
     
-    /**
-     * @brief 检查指定客户端是否处于连接状态
-     * @param socket_fd 客户端套接字文件描述符
-     * @return 如果客户端存在且活跃则返回true，否则返回false
-     * @note 线程安全
-     */
-    bool is_connected(int socket_fd) const;
+    // /**
+    //  * @brief 检查指定客户端是否处于连接状态
+    //  * @param socket_fd 客户端套接字文件描述符
+    //  * @return 如果客户端存在且活跃则返回true，否则返回false
+    //  * @note 线程安全
+    //  */
+    // bool is_connected(int socket_fd) const;
 
-    /**
-     * @brief 获取指定客户端的详细信息
-     * @param socket_fd 客户端套接字文件描述符
-     * @return 包含客户端信息的optional对象，如果客户端不存在则返回nullopt
-     * @note 线程安全
-     */
-    std::optional<ClientInfo> get_client(int socket_fd) const;
+    // /**
+    //  * @brief 获取指定客户端的详细信息
+    //  * @param socket_fd 客户端套接字文件描述符
+    //  * @return 包含客户端信息的optional对象，如果客户端不存在则返回nullopt
+    //  * @note 线程安全
+    //  */
+    // std::optional<ClientInfo> get_client(int socket_fd) const;
     
     /**
      * @brief 获取所有客户端的信息

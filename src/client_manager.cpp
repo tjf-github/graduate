@@ -27,54 +27,54 @@ void ClientManager::remove_client(int socket_fd)
     clients_.erase(socket_fd);
 }
 
-/**
- * @brief 将客户端标记为非活跃状态
- * 
- * 用于在连接关闭或心跳超时时标记客户端。客户端仍保留在管理器中，
- * 但is_connected()会返回false。
- */
-void ClientManager::mark_inactive(int socket_fd)
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    // 查找指定的客户端
-    auto it = clients_.find(socket_fd);
-    // 如果找到则标记为非活跃
-    if (it != clients_.end())
-    {
-        it->second.is_active = false;
-    }
-}
+// /**
+//  * @brief 将客户端标记为非活跃状态
+//  * 
+//  * 用于在连接关闭或心跳超时时标记客户端。客户端仍保留在管理器中，
+//  * 但is_connected()会返回false。
+//  */
+// void ClientManager::mark_inactive(int socket_fd)
+// {
+//     std::lock_guard<std::mutex> lock(mutex_);
+//     // 查找指定的客户端
+//     auto it = clients_.find(socket_fd);
+//     // 如果找到则标记为非活跃
+//     if (it != clients_.end())
+//     {
+//         it->second.is_active = false;
+//     }
+// }
 
-/**
- * @brief 检查客户端是否处于连接状态
- * @param socket_fd 要检查的客户端socket描述符
- * @return 如果客户端存在且处于活跃状态返回true，否则返回false
- */
-bool ClientManager::is_connected(int socket_fd) const
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    // 查找客户端并检查其活跃状态
-    auto it = clients_.find(socket_fd);
-    return it != clients_.end() && it->second.is_active;
-}
+// /**
+//  * @brief 检查客户端是否处于连接状态
+//  * @param socket_fd 要检查的客户端socket描述符
+//  * @return 如果客户端存在且处于活跃状态返回true，否则返回false
+//  */
+// bool ClientManager::is_connected(int socket_fd) const
+// {
+//     std::lock_guard<std::mutex> lock(mutex_);
+//     // 查找客户端并检查其活跃状态
+//     auto it = clients_.find(socket_fd);
+//     return it != clients_.end() && it->second.is_active;
+// }
 
-/**
- * @brief 获取指定客户端的详细信息
- * @param socket_fd 要查询的客户端socket描述符
- * @return 如果客户端存在返回ClientInfo，否则返回nullopt
- */
-std::optional<ClientInfo> ClientManager::get_client(int socket_fd) const
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = clients_.find(socket_fd);
-    // 客户端不存在则返回空值
-    if (it == clients_.end())
-    {
-        return std::nullopt;
-    }
-    // 返回客户端信息的副本
-    return it->second;
-}
+// /**
+//  * @brief 获取指定客户端的详细信息
+//  * @param socket_fd 要查询的客户端socket描述符
+//  * @return 如果客户端存在返回ClientInfo，否则返回nullopt
+//  */
+// std::optional<ClientInfo> ClientManager::get_client(int socket_fd) const
+// {
+//     std::lock_guard<std::mutex> lock(mutex_);
+//     auto it = clients_.find(socket_fd);
+//     // 客户端不存在则返回空值
+//     if (it == clients_.end())
+//     {
+//         return std::nullopt;
+//     }
+//     // 返回客户端信息的副本
+//     return it->second;
+// }
 
 /**
  * @brief 获取所有客户端的信息

@@ -25,6 +25,7 @@ FileManager::FileManager(std::shared_ptr<DBConnectionPool> pool,
     : db_pool(pool), storage_path(path)
 {
     mkdir(storage_path.c_str(), 0755);
+    //大文件临时区
     fs::create_directories(storage_path + "/uploads");
 }
 
@@ -83,6 +84,7 @@ std::string FileManager::get_chunk_path(const std::string &upload_id, int chunk_
     return get_temp_dir(upload_id) + "/chunk_" + std::to_string(chunk_index);
 }
 
+//分片上传校验
 std::string FileManager::calculate_sha256(const char *data, size_t size)
 {
     unsigned char hash[SHA256_DIGEST_LENGTH];
