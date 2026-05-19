@@ -245,7 +245,7 @@ bool FileManager::save_chunk(
     {
         db_pool->return_connection(db);
         return false;
-    }
+    } 
 
     fs::create_directories(get_temp_dir(upload_id));
     std::string chunk_path = get_chunk_path(upload_id, chunk_index);

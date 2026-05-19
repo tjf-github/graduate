@@ -12,7 +12,7 @@ bool parse_json_string_token(const std::string &content, size_t &pos, std::strin
         return false;
     }
 
-    ++pos; // skip opening quote
+    ++pos; // 跳过开头的引号
     out.clear();
 
     while (pos < content.length())
